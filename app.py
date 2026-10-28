@@ -5,20 +5,8 @@ import streamlit as st
 
 DB_FILE = "usuarios.json"
 
-# --- TU BANCO MAESTRO DE CLAVES (Pega aquí tus 11 claves reales "AQ...") ---
-MASTER_KEYS = [
-    "AQUÍ_PEGA_TU_CLAVE_1_AQ...",
-    "AQUÍ_PEGA_TU_CLAVE_2_AQ...",
-    "AQUÍ_PEGA_TU_CLAVE_3_AQ...",
-    "AQUÍ_PEGA_TU_CLAVE_4_AQ...",
-    "AQUÍ_PEGA_TU_CLAVE_5_AQ...",
-    "AQUÍ_PEGA_TU_CLAVE_6_AQ...",
-    "AQUÍ_PEGA_TU_CLAVE_7_AQ...",
-    "AQUÍ_PEGA_TU_CLAVE_8_AQ...",
-    "AQUÍ_PEGA_TU_CLAVE_9_AQ...",
-    "AQUÍ_PEGA_TU_CLAVE_10_AQ...",
-    "AQUÍ_PEGA_TU_CLAVE_11_AQ...",
-]
+# Lee las claves de forma segura desde los Secrets de Streamlit Cloud
+MASTER_KEYS = st.secrets.get("MASTER_KEYS", [])
 
 st.set_page_config(
     page_title="SAY AI - Oficial", page_icon="🤖", layout="centered"
@@ -27,22 +15,21 @@ st.set_page_config(
 
 def cargar_usuarios():
   if os.path.exists(DB_FILE):
-    with open(DB_FILE, "r") as f:
+    with open(DB_FILE, "r", encoding="utf-8") as f:
       return json.load(f)
   return {}
 
 
 def guardar_usuarios(usuarios):
-  with open(DB_FILE, "w") as f:
+  with open(DB_FILE, "w", encoding="utf-8") as f:
     json.dump(usuarios, f, indent=4)
 
 
-# Rotación automática por el banco maestro de 11 claves
 def consultar_gemini_con_pool(mensaje):
-  if not MASTER_KEYS or "AQUÍ_PEGA" in MASTER_KEYS[0]:
+  if not MASTER_KEYS:
     return (
-        "❌ Error: Debes colocar tus 11 claves reales en la lista MASTER_KEYS"
-        " del código."
+        "❌ Error: Configura tus claves en la sección 'Secrets' de Streamlit"
+        " Cloud."
     )
 
   for api_key in MASTER_KEYS:
@@ -64,7 +51,7 @@ def consultar_gemini_con_pool(mensaje):
             .get("text")
         )
     except Exception:
-      continue  # Si una clave se agota o falla, pasa a la siguiente automáticamente
+      continue  # Salta a la siguiente clave si hay algún límite o error
 
   return "❌ Lo sentimos, las claves del sistema están ocupadas temporalmente."
 
@@ -135,7 +122,7 @@ else:
     with st.chat_message(message["role"]):
       st.markdown(message["content"])
 
-  if prompt := st.chat_input("Escribe tu mensaje..."):
+  if prompt := st.chat_input("Escribe tu consulta..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
       st.markdown(prompt)
@@ -146,5 +133,5 @@ else:
         st.markdown(respuesta)
     st.session_state.messages.append(
         {"role": "assistant", "content": respuesta}
-      )
+        )
       
