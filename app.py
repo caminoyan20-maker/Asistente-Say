@@ -1,116 +1,49 @@
-import http.server
 import json
 import os
-import socketserver
 import urllib.request
-import webbrowser
+import streamlit as st
 
-PORT = 8080
 DB_FILE = "usuarios.json"
 
-# --- TU BANCO MAESTRO DE CLAVES ---
+# --- TU BANCO MAESTRO DE CLAVES (Pega aquí tus 11 claves reales "AQ...") ---
 MASTER_KEYS = [
-    "AQ.Ab8RN6IGiVcgqZ_bqMxCg1R4xd9IVfYKRDUnt9IFQw8oPeGUWw",
-    # Agrega aquí el resto de tus claves "AQ..." separadas por coma
+    "AQUÍ_PEGA_TU_CLAVE_1_AQ...",
+    "AQUÍ_PEGA_TU_CLAVE_2_AQ...",
+    "AQUÍ_PEGA_TU_CLAVE_3_AQ...",
+    "AQUÍ_PEGA_TU_CLAVE_4_AQ...",
+    "AQUÍ_PEGA_TU_CLAVE_5_AQ...",
+    "AQUÍ_PEGA_TU_CLAVE_6_AQ...",
+    "AQUÍ_PEGA_TU_CLAVE_7_AQ...",
+    "AQUÍ_PEGA_TU_CLAVE_8_AQ...",
+    "AQUÍ_PEGA_TU_CLAVE_9_AQ...",
+    "AQUÍ_PEGA_TU_CLAVE_10_AQ...",
+    "AQUÍ_PEGA_TU_CLAVE_11_AQ...",
 ]
 
-# Código HTML que se creará automáticamente en tu teléfono
-html_code = """<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SAY AI - Oficial</title>
-    <style>
-        body { font-family: Arial, sans-serif; background-color: #121212; color: #fff; margin: 0; padding: 20px; }
-        .container { max-width: 500px; margin: auto; background: #1e1e1e; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-        h1 { text-align: center; color: #4CAF50; }
-        input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 5px; border: none; box-sizing: border-box; }
-        input { background: #2b2b2b; color: #fff; }
-        button { background: #4CAF50; color: white; font-weight: bold; cursor: pointer; }
-        #chat-box { height: 280px; overflow-y: auto; background: #2b2b2b; padding: 10px; border-radius: 5px; margin-bottom: 10px; }
-        .msg { margin: 8px 0; padding: 10px; border-radius: 5px; line-height: 1.4; }
-        .user { background: #0b5ed7; text-align: right; }
-        .bot { background: #333; }
-        .hidden { display: none; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🌐 SAY AI - Oficial</h1>
-        <div id="auth-section">
-            <h3>Acceso a la Plataforma</h3>
-            <input type="text" id="username" placeholder="Nombre de usuario">
-            <input type="password" id="password" placeholder="Contraseña">
-            <button onclick="login()">Iniciar Sesión / Registrarse</button>
-        </div>
-        <div id="chat-section" class="hidden">
-            <p>Usuario: <b id="user-display"></b> | <span style="color: #4CAF50;">● Sistema Activo</span></p>
-            <div id="chat-box"></div>
-            <input type="text" id="user-msg" placeholder="Escribe tu consulta...">
-            <button onclick="sendMsg()">Enviar</button>
-        </div>
-    </div>
-    <script>
-        async function login() {
-            const u = document.getElementById('username').value.trim();
-            const p = document.getElementById('password').value.trim();
-            if(!u || !p) { alert("Completa todos los campos"); return; }
-            const res = await fetch('/auth', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({username: u, password: p})
-            });
-            const data = await res.json();
-            if(data.success) {
-                document.getElementById('auth-section').classList.add('hidden');
-                document.getElementById('chat-section').classList.remove('hidden');
-                document.getElementById('user-display').innerText = u;
-            } else {
-                alert(data.msg || "Error en el acceso");
-            }
-        }
-        async function sendMsg() {
-            const msgInput = document.getElementById('user-msg');
-            const text = msgInput.value.trim();
-            if(!text) return;
-            const box = document.getElementById('chat-box');
-            box.innerHTML += `<div class="msg user"><b>Tú:</b><br>${text}</div>`;
-            msgInput.value = "";
-            const res = await fetch('/chat', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({message: text})
-            });
-            const data = await res.json();
-            box.innerHTML += `<div class="msg bot"><b>SAY AI:</b><br>${data.reply}</div>`;
-            box.scrollTop = box.scrollHeight;
-        }
-    </script>
-</body>
-</html>
-"""
-
-# Generar el archivo index.html automáticamente
-with open("index.html", "w", encoding="utf-8") as f:
-  f.write(html_code)
+st.set_page_config(
+    page_title="SAY AI - Oficial", page_icon="🤖", layout="centered"
+)
 
 
 def cargar_usuarios():
   if os.path.exists(DB_FILE):
-    with open(DB_FILE, "r", encoding="utf-8") as f:
+    with open(DB_FILE, "r") as f:
       return json.load(f)
   return {}
 
 
 def guardar_usuarios(usuarios):
-  with open(DB_FILE, "w", encoding="utf-8") as f:
+  with open(DB_FILE, "w") as f:
     json.dump(usuarios, f, indent=4)
 
 
+# Rotación automática por el banco maestro de 11 claves
 def consultar_gemini_con_pool(mensaje):
-  if not MASTER_KEYS:
-    return "❌ Error: No hay claves maestras configuradas."
+  if not MASTER_KEYS or "AQUÍ_PEGA" in MASTER_KEYS[0]:
+    return (
+        "❌ Error: Debes colocar tus 11 claves reales en la lista MASTER_KEYS"
+        " del código."
+    )
 
   for api_key in MASTER_KEYS:
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key}"
@@ -131,45 +64,87 @@ def consultar_gemini_con_pool(mensaje):
             .get("text")
         )
     except Exception:
-      continue
+      continue  # Si una clave se agota o falla, pasa a la siguiente automáticamente
 
   return "❌ Lo sentimos, las claves del sistema están ocupadas temporalmente."
 
 
-class CustomHandler(http.server.SimpleHTTPRequestHandler):
+if "usuario_actual" not in st.session_state:
+  st.session_state.usuario_actual = None
 
-  def do_POST(self):
-    content_length = int(self.headers.get("Content-Length", 0))
-    post_data = json.loads(self.rfile.read(content_length).decode("utf-8"))
+st.title("🌐 SAY AI - Plataforma Oficial")
+st.markdown(
+    "Asistente inteligente con distribución automática de recursos para la"
+    " comunidad."
+)
 
-    self.send_response(200)
-    self.send_header("Content-type", "application/json")
-    self.end_headers()
+usuarios = cargar_usuarios()
 
-    if self.path == "/auth":
-      usuarios = cargar_usuarios()
-      u = post_data["username"]
-      p = post_data["password"]
+if st.session_state.usuario_actual is None:
+  tab1, tab2 = st.tabs(["🔑 Iniciar Sesión", "📝 Registrarse"])
 
-      if u in usuarios:
-        if usuarios[u]["password"] == p:
-          response = {"success": True}
-        else:
-          response = {"success": False, "msg": "Contraseña incorrecta"}
+  with tab1:
+    st.subheader("Accede a tu cuenta")
+    username_in = st.text_input("Usuario", key="login_user")
+    password_in = st.text_input(
+        "Contraseña", type="password", key="login_pass"
+    )
+
+    if st.button("Entrar"):
+      if (
+          username_in in usuarios
+          and usuarios[username_in]["password"] == password_in
+      ):
+        st.session_state.usuario_actual = username_in
+        st.success(f"¡Bienvenido, {username_in}!")
+        st.rerun()
       else:
-        usuarios[u] = {"password": p}
+        st.error("Usuario o contraseña incorrectos.")
+
+  with tab2:
+    st.subheader("Regístrate gratis")
+    new_user = st.text_input("Nombre de usuario", key="reg_user")
+    new_pass = st.text_input("Contraseña", type="password", key="reg_pass")
+
+    if st.button("Crear Cuenta"):
+      if not new_user or not new_pass:
+        st.warning("⚠️ Rellena todos los campos.")
+      elif new_user in usuarios:
+        st.error("❌ El usuario ya existe.")
+      else:
+        usuarios[new_user] = {"password": new_pass}
         guardar_usuarios(usuarios)
-        response = {"success": True}
+        st.success("✅ ¡Cuenta creada con éxito! Ve a Iniciar Sesión.")
 
-      self.wfile.write(json.dumps(response).encode("utf-8"))
+else:
+  st.success(
+      f"👤 Sesión activa: **{st.session_state.usuario_actual}** | Conectado al"
+      " banco maestro de IA."
+  )
 
-    elif self.path == "/chat":
-      reply = consultar_gemini_con_pool(post_data["message"])
-      self.wfile.write(json.dumps({"reply": reply}).encode("utf-8"))
+  if st.button("Cerrar Sesión"):
+    st.session_state.usuario_actual = None
+    st.rerun()
 
+  st.markdown("---")
 
-print(f"🚀 Servidor Oficial Activo en http://localhost:{PORT}")
-webbrowser.open(f"http://localhost:{PORT}")
+  if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-with socketserver.TCPServer(("", PORT), CustomHandler) as httpd:
-  httpd.serve_forever()
+  for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+      st.markdown(message["content"])
+
+  if prompt := st.chat_input("Escribe tu mensaje..."):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+      st.markdown(prompt)
+
+    with st.chat_message("assistant"):
+      with st.spinner("SAY AI está procesando..."):
+        respuesta = consultar_gemini_con_pool(prompt)
+        st.markdown(respuesta)
+    st.session_state.messages.append(
+        {"role": "assistant", "content": respuesta}
+      )
+      
