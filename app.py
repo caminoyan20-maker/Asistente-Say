@@ -1,7 +1,6 @@
 import json
 import os
 import urllib.request
-import streamlit.components.v1 as components
 import streamlit as st
 
 DB_FILE = "usuarios.json"
@@ -113,7 +112,7 @@ usuarios = cargar_usuarios()
 # Encabezado
 st.markdown('<h1 class="title-say">SAY</h1>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="cyber-subtitle">[ Interfaz Neural & Voz Activa v2.6 ]</div>',
+    '<div class="cyber-subtitle">[ Interfaz Neural & Audio Nativo v2.6 ]</div>',
     unsafe_allow_html=True,
 )
 
@@ -149,7 +148,7 @@ else:
   c_inf, c_btn = st.columns([3, 1])
   with c_inf:
     st.markdown(
-        f"👤 **{st.session_state.usuario_actual}** | Núcleo de Voz Activo"
+        f"👤 **{st.session_state.usuario_actual}** | Audio Nativo Activo"
     )
   with c_btn:
     if st.button("Salir"):
@@ -158,152 +157,105 @@ else:
 
   st.markdown("---")
 
-  # Panel de Voz Inteligente con manejo de estados persistentes
-  voice_panel = """
-    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 15px;">
-        <button id="recordBtn" onclick="toggleListening()" style="background: linear-gradient(135deg, #00f0ff, #ec4899); border: none; border-radius: 24px; color: white; padding: 12px 24px; font-weight: bold; cursor: pointer; font-family: 'Rajdhani', sans-serif; box-shadow: 0 0 20px rgba(0,240,255,0.5); display: flex; align-items: center; gap: 10px; font-size: 16px; width: 100%; max-width: 320px; justify-content: center;">
-            🎙️ <span id="recStatus">ACTIVAR ESCUCHA DE VOZ</span>
-        </button>
-        <div id="liveText" style="font-family: 'Share Tech Mono', monospace; font-size: 12px; color: #38bdf8; text-align: center; min-height: 20px;"></div>
-    </div>
-    <script>
-        let recognition;
-        let isListening = false;
-
-        function toggleListening() {
-            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-                alert('Tu dispositivo no soporta reconocimiento de voz nativo.');
-                return;
-            }
-            
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            recognition = new SpeechRecognition();
-            recognition.lang = 'es-ES';
-            recognition.interimResults = true; // Permite escuchar en tiempo real mientras hablas
-            recognition.maxAlternatives = 1;
-
-            const btn = document.getElementById('recordBtn');
-            const statusSpan = document.getElementById('recStatus');
-            const liveText = document.getElementById('liveText');
-
-            recognition.onstart = function() {
-                isListening = true;
-                statusSpan.innerText = "ESCUCHANDO...";
-                btn.style.background = "#ff2a8d";
-                btn.style.boxShadow = "0 0 25px #ff2a8d";
-                liveText.innerText = "Te escucho, habla ahora...";
-            };
-
-            recognition.onresult = function(event) {
-                let interimTranscript = '';
-                let finalTranscript = '';
-                
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        finalTranscript += event.results[i][0].transcript;
-                    } else {
-                        interimTranscript += event.results[i][0].transcript;
-                    }
-                }
-                
-                if (interimTranscript) {
-                    liveText.innerText = '🗣️ "' + interimTranscript + '"';
-                }
-
-                if (finalTranscript) {
-                    liveText.innerText = '✅ Procesando: "' + finalTranscript + '"';
-                    recognition.stop();
-                    // Envía la consulta capturada de forma segura al backend
-                    window.parent.location.href = window.location.pathname + "?voice_q=" + encodeURIComponent(finalTranscript);
-                }
-            };
-
-            recognition.onerror = function(event) {
-                statusSpan.innerText = "ACTIVAR ESCUCHA DE VOZ";
-                btn.style.background = "linear-gradient(135deg, #00f0ff, #ec4899)";
-                btn.style.boxShadow = "0 0 20px rgba(0,240,255,0.5)";
-                liveText.innerText = "Error o silencio prolongado. Intenta de nuevo.";
-                isListening = false;
-            };
-
-            recognition.onend = function() {
-                if (isListening) {
-                    statusSpan.innerText = "ACTIVAR ESCUCHA DE VOZ";
-                    btn.style.background = "linear-gradient(135deg, #00f0ff, #ec4899)";
-                    btn.style.boxShadow = "0 0 20px rgba(0,240,255,0.5)";
-                    isListening = false;
-                }
-            };
-
-            try {
-                recognition.start();
-            } catch(e) {
-                recognition.stop();
-            }
-        }
-
-        function speakText(text) {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'es-ES';
-                utterance.rate = 1.0;
-                window.speechSynthesis.speak(utterance);
-            }
-        }
-    </script>
-    """
-  components.html(voice_panel, height=95, scrolling=False)
-
   if "messages" not in st.session_state:
     st.session_state.messages = []
-
-  # Capturar la consulta de voz de forma limpia
-  voice_param = st.query_params.get("voice_q", None)
 
   # Mostrar historial del chat
   for message in st.session_state.messages:
     with st.chat_message(message["role"]):
       st.markdown(message["content"])
 
-  texto_a_procesar = None
-  if voice_param:
-    texto_a_procesar = voice_param
-    st.query_params.clear()
-    st.session_state.messages.append({"role": "user", "content": voice_param})
-    with st.chat_message("user"):
-      st.markdown(voice_param)
+  # Widget de Grabación Nativa de Android (Abre el grabador del teléfono sin cerrarse)
+  st.markdown(
+      "### 🎙️ Enviar Nota de Voz a SAY"
+  )  audio_file = st.file_uploader(
+      "Toca aquí para grabar o adjuntar audio con tu micrófono:",
+      type=["wav", "mp3", "m4a", "ogg", "aac"],
+      key="audio_input",
+  )
 
-  # Entrada tradicional por texto como respaldo
-  if prompt := st.chat_input("Escribe tu consulta o usa el botón de voz..."):
-    texto_a_procesar = prompt
+  texto_a_procesar = None
+
+  if audio_file is not None:
+    # Cuando el usuario graba o sube su nota de voz, la procesamos
+    with st.spinner(
+        "🎧 SAY AI está procesando y transcribiendo tu nota de voz..."
+    ):
+      # Como es un archivo de audio, le pedimos a Gemini Flash que lo analice y extraiga la solicitud
+      audio_bytes = audio_file.read()
+      for api_key in MASTER_KEYS:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key}"
+        # Usamos el payload multimodal para enviar el audio directamente a Gemini
+        import base64
+
+        audio_base64 = base64.b64encode(audio_bytes).decode("utf-8")
+        payload = {
+            "contents": [{
+                "parts": [
+                    {
+                        "text": (
+                            "Escucha este audio y responde únicamente con la"
+                            " transcripción exacta o la pregunta que hace el"
+                            " usuario en español para que pueda buscarse."
+                        )
+                    },
+                    {
+                        "inline_data": {
+                            "mime_type": (
+                                audio_file.type
+                                if audio_file.type
+                                else "audio/mp4"
+                            ),
+                            "data": audio_base64,
+                        }
+                    },
+                ]
+            }]
+        }
+        data_bytes = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(url, data=data_bytes, method="POST")
+        req.add_header("Content-Type", "application/json")
+        try:
+          with urllib.request.urlopen(req) as response:
+            res_body = response.read().decode("utf-8")
+            data = json.loads(res_body)
+            texto_a_procesar = (
+                data.get("candidates", [{}])[0]
+                .get("content", {})
+                .get("parts", [{}])[0]
+                .get("text")
+            )
+            break
+        except Exception:
+          continue
+
+    if texto_a_procesar:
+      st.session_state.messages.append(
+          {"role": "user", "content": f"🎤 Nota de voz: {texto_a_procesar}"}
+      )
+      with st.chat_message("user"):
+        st.markdown(f"🎤 Nota de voz traducida: **{texto_a_procesar}**")
+
+      with st.spinner("SAY AI analizando la petición..."):
+        respuesta = consultar_gemini_con_pool(texto_a_procesar)
+        st.markdown(respuesta)
+      st.session_state.messages.append(
+          {"role": "assistant", "content": respuesta}
+      )
+      # Limpiar archivo para evitar bucles
+      st.rerun()
+
+  # Entrada tradicional de texto por si deseas escribir
+  if prompt := st.chat_input("O escribe tu consulta aquí..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
       st.markdown(prompt)
 
-  # Procesar con la IA si hay texto nuevo
-  if texto_a_procesar and (
-      len(st.session_state.messages) > 0
-      and st.session_state.messages[-1]["content"] == texto_a_procesar
-      and st.session_state.messages[-1]["role"] == "user"
-  ):
     with st.chat_message("assistant"):
-      with st.spinner("SAY AI analizando tu solicitud..."):
-        respuesta = consultar_gemini_con_pool(texto_a_procesar)
+      with st.spinner("SAY AI analizando..."):
+        respuesta = consultar_gemini_con_pool(prompt)
         st.markdown(respuesta)
-        # Leer la respuesta automáticamente en voz alta (Text-to-Speech)
-        safe_resp = json.dumps(respuesta)
-        components.html(
-            f"""
-            <script>
-                if (window.parent.speakText) {{
-                    window.parent.speakText({safe_resp});
-                }}
-            </script>
-            """,
-            height=0,
-        )
     st.session_state.messages.append(
         {"role": "assistant", "content": respuesta}
-          )
-      
+    )
+    
