@@ -5,14 +5,13 @@ import urllib.request
 import streamlit as st
 
 DB_FILE = "usuarios.json"
-
 MASTER_KEYS = st.secrets.get("MASTER_KEYS", [])
 
 st.set_page_config(
     page_title="SAY - Cyber Neon Voice v2.6", page_icon="🤖", layout="centered"
 )
 
-# Estilos Cyber Neon
+# Estilos CSS Cyber Neon
 st.markdown(
     """
     <style>
@@ -82,7 +81,7 @@ def guardar_usuarios(usuarios):
 
 def consultar_gemini_con_pool(mensaje):
   if not MASTER_KEYS:
-    return "❌ Error: Configura tus claves en los Secrets."
+    return "❌ Error: Configura tus claves maestras en los Secrets."
 
   for api_key in MASTER_KEYS:
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key}"
@@ -102,7 +101,7 @@ def consultar_gemini_con_pool(mensaje):
         )
     except Exception:
       continue
-  return "❌ Las claves están ocupadas temporalmente."
+  return "❌ Las claves del sistema están ocupadas temporalmente."
 
 
 if "usuario_actual" not in st.session_state:
@@ -110,14 +109,15 @@ if "usuario_actual" not in st.session_state:
 
 usuarios = cargar_usuarios()
 
-# Encabezado
+# Encabezado Visual
 st.markdown('<h1 class="title-say">SAY</h1>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="cyber-subtitle">[ Interfaz Neural & Audio Nativo v2.6 ]</div>',
+    '<div class="cyber-subtitle">[ Interfaz Neural & Audio Integrado v2.6'
+    " ]</div>",
     unsafe_allow_html=True,
 )
 
-# Autenticación
+# Control de Autenticación
 if st.session_state.usuario_actual is None:
   st.markdown('<div class="hud-card">', unsafe_allow_html=True)
   tab1, tab2 = st.tabs(["🔑 Iniciar Sesión", "📝 Registrarse"])
@@ -145,11 +145,10 @@ if st.session_state.usuario_actual is None:
   st.markdown("</div>", unsafe_allow_html=True)
 
 else:
-  # Barra superior de sesión
   c_inf, c_btn = st.columns([3, 1])
   with c_inf:
     st.markdown(
-        f"👤 **{st.session_state.usuario_actual}** | Audio Nativo Activo"
+        f"👤 **{st.session_state.usuario_actual}** | Núcleo de Audio Activo"
     )
   with c_btn:
     if st.button("Salir"):
@@ -161,15 +160,14 @@ else:
   if "messages" not in st.session_state:
     st.session_state.messages = []
 
-  # Mostrar historial del chat
   for message in st.session_state.messages:
     with st.chat_message(message["role"]):
       st.markdown(message["content"])
 
-  # Widget de Grabación Nativa
+  # Módulo de Interacción por Audio Nativo (Estable en APK)
   st.markdown("### 🎙️ Enviar Nota de Voz a SAY")
   audio_file = st.file_uploader(
-      "Toca aquí para grabar o adjuntar audio con tu micrófono:",
+      "Toca para grabar o adjuntar tu mensaje de voz:",
       type=["wav", "mp3", "m4a", "ogg", "aac"],
       key="audio_input",
   )
@@ -177,7 +175,7 @@ else:
   texto_a_procesar = None
 
   if audio_file is not None:
-    with st.spinner("🎧 SAY AI procesando tu nota de voz..."):
+    with st.spinner("🎧 Procesando audio con el núcleo Gemini Flash..."):
       audio_bytes = audio_file.read()
       for api_key in MASTER_KEYS:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key}"
@@ -187,8 +185,8 @@ else:
                 "parts": [
                     {
                         "text": (
-                            "Escucha este audio y responde únicamente con la"
-                            " transcripción exacta o la pregunta que hace el"
+                            "Escucha este audio y extrae únicamente la"
+                            " pregunta o consulta principal formulada por el"
                             " usuario en español."
                         )
                     },
@@ -227,9 +225,9 @@ else:
           {"role": "user", "content": f"🎤 Nota de voz: {texto_a_procesar}"}
       )
       with st.chat_message("user"):
-        st.markdown(f"🎤 Nota de voz traducida: **{texto_a_procesar}**")
+        st.markdown(f"🎤 Transcripción: **{texto_a_procesar}**")
 
-      with st.spinner("SAY AI analizando la petición..."):
+      with st.spinner("SAY AI generando respuesta..."):
         respuesta = consultar_gemini_con_pool(texto_a_procesar)
         st.markdown(respuesta)
       st.session_state.messages.append(
@@ -237,8 +235,8 @@ else:
       )
       st.rerun()
 
-  # Entrada tradicional de texto
-  if prompt := st.chat_input("O escribe tu consulta aquí..."):
+  # Entrada tradicional por texto como respaldo operativo
+  if prompt := st.chat_input("Escribe tu consulta o usa el módulo de voz..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
       st.markdown(prompt)
@@ -249,5 +247,5 @@ else:
         st.markdown(respuesta)
     st.session_state.messages.append(
         {"role": "assistant", "content": respuesta}
-        )
-            
+          )
+      
