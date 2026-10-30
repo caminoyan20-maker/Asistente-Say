@@ -1,3 +1,4 @@
+import base64
 import json
 import os
 import urllib.request
@@ -165,7 +166,7 @@ else:
     with st.chat_message(message["role"]):
       st.markdown(message["content"])
 
-  # Widget de Grabación Nativa (Separado correctamente en líneas distintas)
+  # Widget de Grabación Nativa
   st.markdown("### 🎙️ Enviar Nota de Voz a SAY")
   audio_file = st.file_uploader(
       "Toca aquí para grabar o adjuntar audio con tu micrófono:",
@@ -180,8 +181,6 @@ else:
       audio_bytes = audio_file.read()
       for api_key in MASTER_KEYS:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key}"
-        import base64
-
         audio_base64 = base64.b64encode(audio_bytes).decode("utf-8")
         payload = {
             "contents": [{
@@ -207,5 +206,48 @@ else:
             }]
         }
         data_bytes = json.dumps(payload).encode("utf-8")
-        req = urllib.request.Request(url, data
-        
+        req = urllib.request.Request(url, data=data_bytes, method="POST")
+        req.add_header("Content-Type", "application/json")
+        try:
+          with urllib.request.urlopen(req) as response:
+            res_body = response.read().decode("utf-8")
+            data = json.loads(res_body)
+            texto_a_procesar = (
+                data.get("candidates", [{}])[0]
+                .get("content", {})
+                .get("parts", [{}])[0]
+                .get("text")
+            )
+            break
+        except Exception:
+          continue
+
+    if texto_a_procesar:
+      st.session_state.messages.append(
+          {"role": "user", "content": f"🎤 Nota de voz: {texto_a_procesar}"}
+      )
+      with st.chat_message("user"):
+        st.markdown(f"🎤 Nota de voz traducida: **{texto_a_procesar}**")
+
+      with st.spinner("SAY AI analizando la petición..."):
+        respuesta = consultar_gemini_con_pool(texto_a_procesar)
+        st.markdown(respuesta)
+      st.session_state.messages.append(
+          {"role": "assistant", "content": respuesta}
+      )
+      st.rerun()
+
+  # Entrada tradicional de texto
+  if prompt := st.chat_input("O escribe tu consulta aquí..."):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+      st.markdown(prompt)
+
+    with st.chat_message("assistant"):
+      with st.spinner("SAY AI analizando..."):
+        respuesta = consultar_gemini_con_pool(prompt)
+        st.markdown(respuesta)
+    st.session_state.messages.append(
+        {"role": "assistant", "content": respuesta}
+        )
+            
