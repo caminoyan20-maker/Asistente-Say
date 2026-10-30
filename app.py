@@ -2,16 +2,17 @@ import base64
 import json
 import os
 import urllib.request
+import streamlit.components.v1 as components
 import streamlit as st
 
 DB_FILE = "usuarios.json"
 MASTER_KEYS = st.secrets.get("MASTER_KEYS", [])
 
 st.set_page_config(
-    page_title="SAY - Cyber Neon Voice v2.6", page_icon="🤖", layout="centered"
+    page_title="SAY - Cyber Neon Voice v2.7", page_icon="🤖", layout="centered"
 )
 
-# Estilos CSS Cyber Neon
+# Estilos Cyber Neon avanzados
 st.markdown(
     """
     <style>
@@ -112,7 +113,7 @@ usuarios = cargar_usuarios()
 # Encabezado Visual
 st.markdown('<h1 class="title-say">SAY</h1>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="cyber-subtitle">[ Interfaz Neural & Audio Integrado v2.6'
+    '<div class="cyber-subtitle">[ Interfaz Neural & Voz Directa v2.7'
     " ]</div>",
     unsafe_allow_html=True,
 )
@@ -148,7 +149,7 @@ else:
   c_inf, c_btn = st.columns([3, 1])
   with c_inf:
     st.markdown(
-        f"👤 **{st.session_state.usuario_actual}** | Núcleo de Audio Activo"
+        f"👤 **{st.session_state.usuario_actual}** | Enlace de Voz Activo"
     )
   with c_btn:
     if st.button("Salir"):
@@ -164,22 +165,78 @@ else:
     with st.chat_message(message["role"]):
       st.markdown(message["content"])
 
-  # Módulo de Interacción por Audio Nativo (Estable en APK)
-  st.markdown("### 🎙️ Enviar Nota de Voz a SAY")
-  audio_file = st.file_uploader(
-      "Toca para grabar o adjuntar tu mensaje de voz:",
-      type=["wav", "mp3", "m4a", "ogg", "aac"],
-      key="audio_input",
-  )
+  # Módulo de Botón de Voz Inteligente Cyber Neon (Sin cajas feas de subida)
+  voice_hud_html = """
+    <div style="background: rgba(8, 14, 28, 0.95); border: 1px solid rgba(0, 240, 255, 0.4); box-shadow: 0 0 15px rgba(0, 240, 255, 0.2); border-radius: 12px; padding: 15px; text-align: center; margin-bottom: 15px;">
+        <div style="font-family: 'Share Tech Mono', monospace; color: #38bdf8; font-size: 0.8rem; margin-bottom: 10px;">[ NÚCLEO DE VOZ TÁCTIL ]</div>
+        <button id="micBtn" onclick="toggleRecord()" style="background: linear-gradient(135deg, #00f0ff, #ec4899); border: none; border-radius: 30px; color: white; padding: 12px 25px; font-weight: bold; cursor: pointer; font-family: 'Rajdhani', sans-serif; box-shadow: 0 0 20px rgba(0,240,255,0.5); font-size: 16px; width: 100%; max-width: 280px; transition: all 0.3s ease;">
+            🎙️ <span id="micText">TOCAR PARA HABLAR</span>
+        </button>
+        <div id="micStatus" style="font-family: 'Share Tech Mono', monospace; font-size: 0.75rem; color: #00f0ff; margin-top: 8px;">Sistema listo</div>
+    </div>
 
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+        let recording = false;
+
+        async function toggleRecord() {
+            const btn = document.getElementById('micBtn');
+            const txt = document.getElementById('micText');
+            const status = document.getElementById('micStatus');
+
+            if (!recording) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+
+                    mediaRecorder.ondataavailable = event => {
+                        audioChunks.push(event.data);
+                    };
+
+                    mediaRecorder.onstop = async () => {
+                        status.innerText = "Procesando audio neural...";
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/mp4' });
+                        const reader = new FileReader();
+                        reader.readAsDataURL(audioBlob);
+                        reader.onloadend = function() {
+                            const base64Audio = reader.result.split(',')[1];
+                            window.parent.location.href = window.location.pathname + "?voice_data=" + encodeURIComponent(base64Audio);
+                        }
+                    };
+
+                    mediaRecorder.start();
+                    recording = true;
+                    txt.innerText = "GRABANDO... (Toca para detener)";
+                    btn.style.background = "#ff2a8d";
+                    btn.style.boxShadow = "0 0 25px #ff2a8d";
+                    status.innerText = "Escuchando tu voz en vivo...";
+                } catch (err) {
+                    alert("Error al acceder al micrófono: " + err.message);
+                }
+            } else {
+                mediaRecorder.stop();
+                recording = false;
+                txt.innerText = "TOCAR PARA HABLAR";
+                btn.style.background = "linear-gradient(135deg, #00f0ff, #ec4899)";
+                btn.style.boxShadow = "0 0 20px rgba(0,240,255,0.5)";
+            }
+        }
+    </script>
+    """
+  components.html(voice_hud_html, height=140, scrolling=False)
+
+  # Capturar audio enviado por JavaScript de forma invisible
+  voice_base64_param = st.query_params.get("voice_data", None)
   texto_a_procesar = None
 
-  if audio_file is not None:
-    with st.spinner("🎧 Procesando audio con el núcleo Gemini Flash..."):
-      audio_bytes = audio_file.read()
+  if voice_base64_param:
+    st.query_params.clear()
+    with st.spinner("🎧 SAY AI analizando tu nota de voz directa..."):
+      audio_bytes = base64.b64decode(voice_base64_param)
       for api_key in MASTER_KEYS:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key}"
-        audio_base64 = base64.b64encode(audio_bytes).decode("utf-8")
         payload = {
             "contents": [{
                 "parts": [
@@ -192,12 +249,8 @@ else:
                     },
                     {
                         "inline_data": {
-                            "mime_type": (
-                                audio_file.type
-                                if audio_file.type
-                                else "audio/mp4"
-                            ),
-                            "data": audio_base64,
+                            "mime_type": "audio/mp4",
+                            "data": voice_base64_param,
                         }
                     },
                 ]
@@ -235,8 +288,8 @@ else:
       )
       st.rerun()
 
-  # Entrada tradicional por texto como respaldo operativo
-  if prompt := st.chat_input("Escribe tu consulta o usa el módulo de voz..."):
+  # Entrada tradicional de texto por respaldo
+  if prompt := st.chat_input("O escribe tu consulta aquí..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
       st.markdown(prompt)
