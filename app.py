@@ -1,6 +1,7 @@
 import json
 import os
 import urllib.request
+import streamlit.components.v1 as components
 import streamlit as st
 
 DB_FILE = "usuarios.json"
@@ -9,13 +10,13 @@ DB_FILE = "usuarios.json"
 MASTER_KEYS = st.secrets.get("MASTER_KEYS", [])
 
 st.set_page_config(
-    page_title="SAY - Cyber Neon Search Engine v2.6",
+    page_title="SAY - Cyber Neon Voice v2.6",
     page_icon="🤖",
     layout="centered",
     initial_sidebar_state="collapsed",
 )
 
-# Estilos CSS Cyberpunk aplicados directamente a los elementos nativos de Streamlit
+# Estilos CSS Cyberpunk y optimización visual
 st.markdown(
     """
     <style>
@@ -43,7 +44,7 @@ st.markdown(
                 0 0 50px #ec4899;
             -webkit-text-stroke: 1px #ff2a8d;
             text-align: center;
-            font-size: 3.5rem;
+            font-size: 3rem;
             font-weight: 900;
         }
 
@@ -53,11 +54,10 @@ st.markdown(
             color: #38bdf8;
             font-size: 0.75rem;
             letter-spacing: 0.25em;
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
             text-shadow: 0 0 8px rgba(56, 189, 248, 0.8);
         }
 
-        /* Paneles y Tarjetas estilo HUD */
         .hud-panel {
             background: rgba(8, 14, 28, 0.92);
             border: 1px solid rgba(0, 240, 255, 0.5);
@@ -69,7 +69,6 @@ st.markdown(
             font-family: 'Share Tech Mono', monospace;
         }
 
-        /* Estilo para los mensajes del chat nativo */
         .stChatMessage {
             background: rgba(15, 23, 42, 0.85) !important;
             border: 1px solid rgba(0, 240, 255, 0.3) !important;
@@ -131,7 +130,7 @@ if "usuario_actual" not in st.session_state:
 # Encabezado Visual Cyber Neon
 st.markdown('<h1 class="title-say">SAY</h1>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="cyber-subtitle">[ Cybernetic Neural Interface Search v2.6'
+    '<div class="cyber-subtitle">[ Cybernetic Neural Interface & Voice v2.6'
     " ]</div>",
     unsafe_allow_html=True,
 )
@@ -178,12 +177,11 @@ if st.session_state.usuario_actual is None:
   st.markdown("</div>", unsafe_allow_html=True)
 
 else:
-  # Barra superior de sesión activa estilo HUD
+  # Barra superior de sesión
   col_info, col_btn = st.columns([3, 1])
   with col_info:
     st.markdown(
-        f"👤 **Sesión:** `{st.session_state.usuario_actual}` | **Núcleo IA:**"
-        " Online"
+        f"👤 **Sesión:** `{st.session_state.usuario_actual}` | **Voz:** Activada"
     )
   with col_btn:
     if st.button("Cerrar Sesión", use_container_width=True):
@@ -192,16 +190,99 @@ else:
 
   st.markdown("---")
 
-  # Historial de mensajes funcional
+  # Módulo flotante HTML/JS para el Micrófono (Speech-to-Text) y Lectura de voz (TTS)
+  voice_control_html = """
+    <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 15px;">
+        <button id="micBtn" onclick="toggleListening()" style="background: linear-gradient(135deg, #00f0ff, #ec4899); border: none; border-radius: 9999px; color: white; padding: 10px 20px; font-weight: bold; cursor: pointer; font-family: 'Rajdhani', sans-serif; box-shadow: 0 0 15px rgba(0,240,255,0.5); display: flex; align-items: center; gap: 8px;">
+            🎙️ <span id="micText">Hablar con SAY</span>
+        </button>
+    </div>
+    <script>
+        let recognition;
+        function toggleListening() {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                alert('Tu navegador no soporta reconocimiento de voz.');
+                return;
+            }
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.lang = 'es-ES';
+            recognition.interimResults = false;
+            
+            const btnText = document.getElementById('micText');
+            btnText.innerText = "Escuchando...";
+            
+            recognition.onresult = function(event) {
+                const speechResult = event.results[0][0].transcript;
+                btnText.innerText = "Hablar con SAY";
+                // Redirige la consulta de voz directamente al backend de Streamlit
+                window.parent.location.href = window.location.pathname + "?q=" + encodeURIComponent(speechResult);
+            };
+            
+            recognition.onerror = function() {
+                btnText.innerText = "Hablar con SAY";
+            };
+            
+            recognition.onend = function() {
+                btnText.innerText = "Hablar con SAY";
+            };
+            
+            recognition.start();
+        }
+
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'es-ES';
+                utterance.rate = 1.0;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+    </script>
+    """
+  components.html(voice_control_html, height=60, scrolling=False)
+
+  # Capturar consulta por voz desde la URL si existe
+  query_param = st.query_params.get("q", None)
+
   if "messages" not in st.session_state:
     st.session_state.messages = []
 
+  # Si llegó una consulta por voz, procesarla automáticamente
+  if query_param:
+    prompt = query_param
+    st.query_params.clear()
+    st.session_state.messages.append({"role": "user", "content": prompt})
+
+    with st.chat_message("user"):
+      st.markdown(prompt)
+
+    with st.chat_message("assistant"):
+      with st.spinner("SAY AI está procesando..."):
+        respuesta = consultar_gemini_con_pool(prompt)
+        st.markdown(respuesta)
+        # Script JS para que la app hable la respuesta automáticamente
+        components.html(
+            f"""
+            <script>
+                if (window.parent.speakText) {{
+                    window.parent.speakText({json.dumps(respuesta)});
+                }}
+            </script>
+            """,
+            height=0,
+        )
+    st.session_state.messages.append(
+        {"role": "assistant", "content": respuesta}
+    )
+
+  # Mostrar historial de chat existente
   for message in st.session_state.messages:
     with st.chat_message(message["role"]):
       st.markdown(message["content"])
 
-  # Campo de entrada de texto funcional de Streamlit (Garantiza 100% funcionalidad)
-  if prompt := st.chat_input("Escribe tu consulta o pregunta a la IA..."):
+  # Entrada de texto tradicional (por si prefieres escribir)
+  if prompt := st.chat_input("Escribe tu consulta o usa el micrófono..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
       st.markdown(prompt)
@@ -210,7 +291,17 @@ else:
       with st.spinner("SAY AI está procesando..."):
         respuesta = consultar_gemini_con_pool(prompt)
         st.markdown(respuesta)
+        components.html(
+            f"""
+            <script>
+                if (window.parent.speakText) {{
+                    window.parent.speakText({json.dumps(respuesta)});
+                }}
+            </script>
+            """,
+            height=0,
+        )
     st.session_state.messages.append(
         {"role": "assistant", "content": respuesta}
-    )
+)
       
