@@ -113,7 +113,7 @@ usuarios = cargar_usuarios()
 # Encabezado
 st.markdown('<h1 class="title-say">SAY</h1>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="cyber-subtitle">[ Interfaz Neural & Voz Activa ]</div>',
+    '<div class="cyber-subtitle">[ Interfaz Neural & Voz Activa v2.6 ]</div>',
     unsafe_allow_html=True,
 )
 
@@ -148,7 +148,9 @@ else:
   # Barra superior de sesión
   c_inf, c_btn = st.columns([3, 1])
   with c_inf:
-    st.markdown(f"👤 **{st.session_state.usuario_actual}** | Voz Online")
+    st.markdown(
+        f"👤 **{st.session_state.usuario_actual}** | Núcleo de Voz Activo"
+    )
   with c_btn:
     if st.button("Salir"):
       st.session_state.usuario_actual = None
@@ -156,45 +158,88 @@ else:
 
   st.markdown("---")
 
-  # Panel de Botones de Voz (Micrófono interactivo)
+  # Panel de Voz Inteligente con manejo de estados persistentes
   voice_panel = """
-    <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 15px;">
-        <button id="recordBtn" onclick="startListening()" style="background: linear-gradient(135deg, #00f0ff, #ec4899); border: none; border-radius: 20px; color: white; padding: 10px 20px; font-weight: bold; cursor: pointer; font-family: 'Rajdhani', sans-serif; box-shadow: 0 0 15px rgba(0,240,255,0.4); display: flex; align-items: center; gap: 8px; font-size: 15px;">
-            🎙️ <span id="recStatus">Hablar con SAY</span>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 15px;">
+        <button id="recordBtn" onclick="toggleListening()" style="background: linear-gradient(135deg, #00f0ff, #ec4899); border: none; border-radius: 24px; color: white; padding: 12px 24px; font-weight: bold; cursor: pointer; font-family: 'Rajdhani', sans-serif; box-shadow: 0 0 20px rgba(0,240,255,0.5); display: flex; align-items: center; gap: 10px; font-size: 16px; width: 100%; max-width: 320px; justify-content: center;">
+            🎙️ <span id="recStatus">ACTIVAR ESCUCHA DE VOZ</span>
         </button>
+        <div id="liveText" style="font-family: 'Share Tech Mono', monospace; font-size: 12px; color: #38bdf8; text-align: center; min-height: 20px;"></div>
     </div>
     <script>
-        function startListening() {
+        let recognition;
+        let isListening = false;
+
+        function toggleListening() {
             if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-                alert('Tu dispositivo no soporta reconocimiento de voz.');
+                alert('Tu dispositivo no soporta reconocimiento de voz nativo.');
                 return;
             }
+            
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            const recognition = new SpeechRecognition();
+            recognition = new SpeechRecognition();
             recognition.lang = 'es-ES';
-            recognition.interimResults = false;
-            
+            recognition.interimResults = true; // Permite escuchar en tiempo real mientras hablas
+            recognition.maxAlternatives = 1;
+
+            const btn = document.getElementById('recordBtn');
             const statusSpan = document.getElementById('recStatus');
-            statusSpan.innerText = "Escuchando... Habla ahora";
-            document.getElementById('recordBtn').style.background = "#ff2a8d";
-            
+            const liveText = document.getElementById('liveText');
+
+            recognition.onstart = function() {
+                isListening = true;
+                statusSpan.innerText = "ESCUCHANDO...";
+                btn.style.background = "#ff2a8d";
+                btn.style.boxShadow = "0 0 25px #ff2a8d";
+                liveText.innerText = "Te escucho, habla ahora...";
+            };
+
             recognition.onresult = function(event) {
-                const speechResult = event.results[0][0].transcript;
-                statusSpan.innerText = "Procesando voz...";
-                window.parent.location.href = window.location.pathname + "?voice_q=" + encodeURIComponent(speechResult);
+                let interimTranscript = '';
+                let finalTranscript = '';
+                
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript;
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
+                }
+                
+                if (interimTranscript) {
+                    liveText.innerText = '🗣️ "' + interimTranscript + '"';
+                }
+
+                if (finalTranscript) {
+                    liveText.innerText = '✅ Procesando: "' + finalTranscript + '"';
+                    recognition.stop();
+                    // Envía la consulta capturada de forma segura al backend
+                    window.parent.location.href = window.location.pathname + "?voice_q=" + encodeURIComponent(finalTranscript);
+                }
             };
-            
-            recognition.onerror = function() {
-                statusSpan.innerText = "Hablar con SAY";
-                document.getElementById('recordBtn').style.background = "linear-gradient(135deg, #00f0ff, #ec4899)";
+
+            recognition.onerror = function(event) {
+                statusSpan.innerText = "ACTIVAR ESCUCHA DE VOZ";
+                btn.style.background = "linear-gradient(135deg, #00f0ff, #ec4899)";
+                btn.style.boxShadow = "0 0 20px rgba(0,240,255,0.5)";
+                liveText.innerText = "Error o silencio prolongado. Intenta de nuevo.";
+                isListening = false;
             };
-            
+
             recognition.onend = function() {
-                statusSpan.innerText = "Hablar con SAY";
-                document.getElementById('recordBtn').style.background = "linear-gradient(135deg, #00f0ff, #ec4899)";
+                if (isListening) {
+                    statusSpan.innerText = "ACTIVAR ESCUCHA DE VOZ";
+                    btn.style.background = "linear-gradient(135deg, #00f0ff, #ec4899)";
+                    btn.style.boxShadow = "0 0 20px rgba(0,240,255,0.5)";
+                    isListening = false;
+                }
             };
-            
-            recognition.start();
+
+            try {
+                recognition.start();
+            } catch(e) {
+                recognition.stop();
+            }
         }
 
         function speakText(text) {
@@ -208,47 +253,45 @@ else:
         }
     </script>
     """
-  components.html(voice_panel, height=65, scrolling=False)
+  components.html(voice_panel, height=95, scrolling=False)
 
   if "messages" not in st.session_state:
     st.session_state.messages = []
 
-  # Capturar si se envió una consulta por voz mediante parámetro seguro
+  # Capturar la consulta de voz de forma limpia
   voice_param = st.query_params.get("voice_q", None)
-  if voice_param:
-    st.query_params.clear()
-    st.session_state.messages.append({"role": "user", "content": voice_param})
 
   # Mostrar historial del chat
   for message in st.session_state.messages:
     with st.chat_message(message["role"]):
       st.markdown(message["content"])
 
-  # Si hay una nueva consulta (ya sea por voz o por texto), procesarla
-  prompt = st.chat_input("Escribe tu consulta o usa el botón de voz superior...")
-
   texto_a_procesar = None
   if voice_param:
     texto_a_procesar = voice_param
-  elif prompt:
+    st.query_params.clear()
+    st.session_state.messages.append({"role": "user", "content": voice_param})
+    with st.chat_message("user"):
+      st.markdown(voice_param)
+
+  # Entrada tradicional por texto como respaldo
+  if prompt := st.chat_input("Escribe tu consulta o usa el botón de voz..."):
     texto_a_procesar = prompt
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
       st.markdown(prompt)
 
+  # Procesar con la IA si hay texto nuevo
   if texto_a_procesar and (
-      not st.session_state.messages
-      or st.session_state.messages[-1]["content"] == texto_a_procesar
+      len(st.session_state.messages) > 0
+      and st.session_state.messages[-1]["content"] == texto_a_procesar
+      and st.session_state.messages[-1]["role"] == "user"
   ):
-    # Asegurar que el mensaje de usuario esté visible si vino por voz
-    if voice_param and st.session_state.messages[-1]["role"] != "user":
-      pass
-
     with st.chat_message("assistant"):
-      with st.spinner("SAY AI analizando..."):
+      with st.spinner("SAY AI analizando tu solicitud..."):
         respuesta = consultar_gemini_con_pool(texto_a_procesar)
         st.markdown(respuesta)
-        # Activar la síntesis de voz (Text-to-Speech) automáticamente
+        # Leer la respuesta automáticamente en voz alta (Text-to-Speech)
         safe_resp = json.dumps(respuesta)
         components.html(
             f"""
@@ -262,5 +305,5 @@ else:
         )
     st.session_state.messages.append(
         {"role": "assistant", "content": respuesta}
-    )
-    
+          )
+      
