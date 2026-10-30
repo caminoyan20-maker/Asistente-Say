@@ -8,7 +8,7 @@ DB_FILE = "usuarios.json"
 MASTER_KEYS = st.secrets.get("MASTER_KEYS", [])
 
 st.set_page_config(
-    page_title="SAY - Cyber Neon Voice v2.8", page_icon="🤖", layout="centered"
+    page_title="SAY - Cyber Neon Voice v2.9", page_icon="🤖", layout="centered"
 )
 
 # Estilos Cyber Neon
@@ -85,12 +85,19 @@ def consultar_gemini_con_pool(mensaje):
 
   for api_key in MASTER_KEYS:
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key}"
-    payload = {"contents": [{"role": "user", "parts": [{"text": mensaje}]}]}
+    # Payload optimizado para velocidad máxima (respuestas directas y al grano)
+    payload = {
+        "contents": [{"role": "user", "parts": [{"text": mensaje}]}],
+        "generationConfig": {
+            "temperature": 0.7,
+            "maxOutputTokens": 800,  # Limita el tamaño para que responda volando
+        },
+    }
     data_bytes = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(url, data=data_bytes, method="POST")
     req.add_header("Content-Type", "application/json")
     try:
-      with urllib.request.urlopen(req) as response:
+      with urllib.request.urlopen(req, timeout=8) as response:
         res_body = response.read().decode("utf-8")
         data = json.loads(res_body)
         return (
@@ -112,7 +119,7 @@ usuarios = cargar_usuarios()
 # Encabezado Visual
 st.markdown('<h1 class="title-say">SAY</h1>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="cyber-subtitle">[ Interfaz Neural & Voz Ultra-Rápida v2.8'
+    '<div class="cyber-subtitle">[ Interfaz Neural & Velocidad Turbo v2.9'
     " ]</div>",
     unsafe_allow_html=True,
 )
@@ -148,7 +155,7 @@ else:
   c_inf, c_btn = st.columns([3, 1])
   with c_inf:
     st.markdown(
-        f"👤 **{st.session_state.usuario_actual}** | Núcleo de Voz Veloz"
+        f"👤 **{st.session_state.usuario_actual}** | Núcleo Turbo Activo"
     )
   with c_btn:
     if st.button("Salir"):
@@ -164,14 +171,14 @@ else:
     with st.chat_message(message["role"]):
       st.markdown(message["content"])
 
-  # Módulo de Voz Ultra-Rápido con Detección Automática de Idioma
+  # Módulo de Voz Turbo Multilingüe
   voice_hud_html = """
     <div style="background: rgba(8, 14, 28, 0.95); border: 1px solid rgba(0, 240, 255, 0.4); box-shadow: 0 0 15px rgba(0, 240, 255, 0.2); border-radius: 12px; padding: 15px; text-align: center; margin-bottom: 15px;">
-        <div style="font-family: 'Share Tech Mono', monospace; color: #38bdf8; font-size: 0.8rem; margin-bottom: 10px;">[ BÚSQUEDA POR VOZ MULTILINGÜE ]</div>
+        <div style="font-family: 'Share Tech Mono', monospace; color: #38bdf8; font-size: 0.8rem; margin-bottom: 10px;">[ NÚCLEO DE VOZ TURBO ]</div>
         <button id="fastMicBtn" onclick="startFastVoice()" style="background: linear-gradient(135deg, #00f0ff, #ec4899); border: none; border-radius: 30px; color: white; padding: 12px 25px; font-weight: bold; cursor: pointer; font-family: 'Rajdhani', sans-serif; box-shadow: 0 0 20px rgba(0,240,255,0.5); font-size: 16px; width: 100%; max-width: 280px; transition: all 0.3s ease;">
             🎙️ <span id="fastMicText">HABLAR CON SAY</span>
         </button>
-        <div id="fastMicStatus" style="font-family: 'Share Tech Mono', monospace; font-size: 0.75rem; color: #00f0ff; margin-top: 8px;">Listo para escuchar en cualquier idioma</div>
+        <div id="fastMicStatus" style="font-family: 'Share Tech Mono', monospace; font-size: 0.75rem; color: #00f0ff; margin-top: 8px;">Listo para búsqueda instantánea</div>
     </div>
 
     <script>
@@ -183,8 +190,7 @@ else:
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             const recognition = new SpeechRecognition();
             
-            // Detección automática del idioma del usuario
-            recognition.lang = ''; 
+            recognition.lang = ''; // Detección automática de idioma
             recognition.interimResults = false;
             recognition.maxAlternatives = 1;
 
@@ -196,20 +202,20 @@ else:
                 txt.innerText = "ESCUCHANDO...";
                 btn.style.background = "#ff2a8d";
                 btn.style.boxShadow = "0 0 25px #ff2a8d";
-                status.innerText = "Habla ahora claramente...";
+                status.innerText = "Habla ahora...";
             };
 
             recognition.onresult = function(event) {
                 const speechResult = event.results[0][0].transcript;
-                status.innerText = "¡Texto capturado! Enviando...";
+                status.innerText = "Buscando respuesta...";
                 window.parent.location.href = window.location.pathname + "?voice_q=" + encodeURIComponent(speechResult);
             };
 
-            recognition.onerror = function(event) {
+            recognition.onerror = function() {
                 txt.innerText = "HABLAR CON SAY";
                 btn.style.background = "linear-gradient(135deg, #00f0ff, #ec4899)";
                 btn.style.boxShadow = "0 0 20px rgba(0,240,255,0.5)";
-                status.innerText = "Error o silencio. Intenta de nuevo.";
+                status.innerText = "Intenta de nuevo.";
             };
 
             recognition.onend = function() {
@@ -224,7 +230,6 @@ else:
     """
   components.html(voice_hud_html, height=140, scrolling=False)
 
-  # Capturar consulta de voz instantánea
   voice_param = st.query_params.get("voice_q", None)
   texto_a_procesar = None
 
@@ -232,7 +237,6 @@ else:
     st.query_params.clear()
     texto_a_procesar = voice_param
 
-  # Entrada tradicional por texto como respaldo
   if prompt := st.chat_input("O escribe tu consulta aquí..."):
     texto_a_procesar = prompt
 
@@ -242,11 +246,10 @@ else:
       st.markdown(texto_a_procesar)
 
     with st.chat_message("assistant"):
-      with st.spinner("SAY AI procesando tu solicitud a velocidad máxima..."):
+      with st.spinner("SAY AI respondiendo en modo turbo..."):
         respuesta = consultar_gemini_con_pool(texto_a_procesar)
         st.markdown(respuesta)
     st.session_state.messages.append(
         {"role": "assistant", "content": respuesta}
     )
     st.rerun()
-    
