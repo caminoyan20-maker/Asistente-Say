@@ -133,7 +133,7 @@ if st.session_state.usuario_actual is None:
 
   with tab2:
     r_u = st.text_input("Nuevo Usuario", key="r_u")
-    r_p = st.text_input("Nueva Contraseña", type="password", key="r_p")
+    r_p = st.text_input("Contraseña nueva", type="password", key="r_p")
     if st.button("Crear Cuenta", use_container_width=True):
       if r_u and r_p and r_u not in usuarios:
         usuarios[r_u] = {"password": r_p}
@@ -165,10 +165,9 @@ else:
     with st.chat_message(message["role"]):
       st.markdown(message["content"])
 
-  # Widget de Grabación Nativa de Android (Abre el grabador del teléfono sin cerrarse)
-  st.markdown(
-      "### 🎙️ Enviar Nota de Voz a SAY"
-  )  audio_file = st.file_uploader(
+  # Widget de Grabación Nativa (Separado correctamente en líneas distintas)
+  st.markdown("### 🎙️ Enviar Nota de Voz a SAY")
+  audio_file = st.file_uploader(
       "Toca aquí para grabar o adjuntar audio con tu micrófono:",
       type=["wav", "mp3", "m4a", "ogg", "aac"],
       key="audio_input",
@@ -177,15 +176,10 @@ else:
   texto_a_procesar = None
 
   if audio_file is not None:
-    # Cuando el usuario graba o sube su nota de voz, la procesamos
-    with st.spinner(
-        "🎧 SAY AI está procesando y transcribiendo tu nota de voz..."
-    ):
-      # Como es un archivo de audio, le pedimos a Gemini Flash que lo analice y extraiga la solicitud
+    with st.spinner("🎧 SAY AI procesando tu nota de voz..."):
       audio_bytes = audio_file.read()
       for api_key in MASTER_KEYS:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key}"
-        # Usamos el payload multimodal para enviar el audio directamente a Gemini
         import base64
 
         audio_base64 = base64.b64encode(audio_bytes).decode("utf-8")
@@ -196,7 +190,7 @@ else:
                         "text": (
                             "Escucha este audio y responde únicamente con la"
                             " transcripción exacta o la pregunta que hace el"
-                            " usuario en español para que pueda buscarse."
+                            " usuario en español."
                         )
                     },
                     {
@@ -213,49 +207,5 @@ else:
             }]
         }
         data_bytes = json.dumps(payload).encode("utf-8")
-        req = urllib.request.Request(url, data=data_bytes, method="POST")
-        req.add_header("Content-Type", "application/json")
-        try:
-          with urllib.request.urlopen(req) as response:
-            res_body = response.read().decode("utf-8")
-            data = json.loads(res_body)
-            texto_a_procesar = (
-                data.get("candidates", [{}])[0]
-                .get("content", {})
-                .get("parts", [{}])[0]
-                .get("text")
-            )
-            break
-        except Exception:
-          continue
-
-    if texto_a_procesar:
-      st.session_state.messages.append(
-          {"role": "user", "content": f"🎤 Nota de voz: {texto_a_procesar}"}
-      )
-      with st.chat_message("user"):
-        st.markdown(f"🎤 Nota de voz traducida: **{texto_a_procesar}**")
-
-      with st.spinner("SAY AI analizando la petición..."):
-        respuesta = consultar_gemini_con_pool(texto_a_procesar)
-        st.markdown(respuesta)
-      st.session_state.messages.append(
-          {"role": "assistant", "content": respuesta}
-      )
-      # Limpiar archivo para evitar bucles
-      st.rerun()
-
-  # Entrada tradicional de texto por si deseas escribir
-  if prompt := st.chat_input("O escribe tu consulta aquí..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-      st.markdown(prompt)
-
-    with st.chat_message("assistant"):
-      with st.spinner("SAY AI analizando..."):
-        respuesta = consultar_gemini_con_pool(prompt)
-        st.markdown(respuesta)
-    st.session_state.messages.append(
-        {"role": "assistant", "content": respuesta}
-    )
-    
+        req = urllib.request.Request(url, data
+        
