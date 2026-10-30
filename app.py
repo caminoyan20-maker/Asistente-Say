@@ -1,4 +1,3 @@
-import base64
 import json
 import os
 import urllib.request
@@ -9,10 +8,10 @@ DB_FILE = "usuarios.json"
 MASTER_KEYS = st.secrets.get("MASTER_KEYS", [])
 
 st.set_page_config(
-    page_title="SAY - Cyber Neon Voice v2.7", page_icon="🤖", layout="centered"
+    page_title="SAY - Cyber Neon Voice v2.8", page_icon="🤖", layout="centered"
 )
 
-# Estilos Cyber Neon avanzados
+# Estilos Cyber Neon
 st.markdown(
     """
     <style>
@@ -113,7 +112,7 @@ usuarios = cargar_usuarios()
 # Encabezado Visual
 st.markdown('<h1 class="title-say">SAY</h1>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="cyber-subtitle">[ Interfaz Neural & Voz Directa v2.7'
+    '<div class="cyber-subtitle">[ Interfaz Neural & Voz Ultra-Rápida v2.8'
     " ]</div>",
     unsafe_allow_html=True,
 )
@@ -149,7 +148,7 @@ else:
   c_inf, c_btn = st.columns([3, 1])
   with c_inf:
     st.markdown(
-        f"👤 **{st.session_state.usuario_actual}** | Enlace de Voz Activo"
+        f"👤 **{st.session_state.usuario_actual}** | Núcleo de Voz Veloz"
     )
   with c_btn:
     if st.button("Salir"):
@@ -165,140 +164,89 @@ else:
     with st.chat_message(message["role"]):
       st.markdown(message["content"])
 
-  # Módulo de Botón de Voz Inteligente Cyber Neon (Sin cajas feas de subida)
+  # Módulo de Voz Ultra-Rápido con Detección Automática de Idioma
   voice_hud_html = """
     <div style="background: rgba(8, 14, 28, 0.95); border: 1px solid rgba(0, 240, 255, 0.4); box-shadow: 0 0 15px rgba(0, 240, 255, 0.2); border-radius: 12px; padding: 15px; text-align: center; margin-bottom: 15px;">
-        <div style="font-family: 'Share Tech Mono', monospace; color: #38bdf8; font-size: 0.8rem; margin-bottom: 10px;">[ NÚCLEO DE VOZ TÁCTIL ]</div>
-        <button id="micBtn" onclick="toggleRecord()" style="background: linear-gradient(135deg, #00f0ff, #ec4899); border: none; border-radius: 30px; color: white; padding: 12px 25px; font-weight: bold; cursor: pointer; font-family: 'Rajdhani', sans-serif; box-shadow: 0 0 20px rgba(0,240,255,0.5); font-size: 16px; width: 100%; max-width: 280px; transition: all 0.3s ease;">
-            🎙️ <span id="micText">TOCAR PARA HABLAR</span>
+        <div style="font-family: 'Share Tech Mono', monospace; color: #38bdf8; font-size: 0.8rem; margin-bottom: 10px;">[ BÚSQUEDA POR VOZ MULTILINGÜE ]</div>
+        <button id="fastMicBtn" onclick="startFastVoice()" style="background: linear-gradient(135deg, #00f0ff, #ec4899); border: none; border-radius: 30px; color: white; padding: 12px 25px; font-weight: bold; cursor: pointer; font-family: 'Rajdhani', sans-serif; box-shadow: 0 0 20px rgba(0,240,255,0.5); font-size: 16px; width: 100%; max-width: 280px; transition: all 0.3s ease;">
+            🎙️ <span id="fastMicText">HABLAR CON SAY</span>
         </button>
-        <div id="micStatus" style="font-family: 'Share Tech Mono', monospace; font-size: 0.75rem; color: #00f0ff; margin-top: 8px;">Sistema listo</div>
+        <div id="fastMicStatus" style="font-family: 'Share Tech Mono', monospace; font-size: 0.75rem; color: #00f0ff; margin-top: 8px;">Listo para escuchar en cualquier idioma</div>
     </div>
 
     <script>
-        let mediaRecorder;
-        let audioChunks = [];
-        let recording = false;
+        function startFastVoice() {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                alert('Tu dispositivo no soporta reconocimiento de voz directo.');
+                return;
+            }
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const recognition = new SpeechRecognition();
+            
+            // Detección automática del idioma del usuario
+            recognition.lang = ''; 
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
 
-        async function toggleRecord() {
-            const btn = document.getElementById('micBtn');
-            const txt = document.getElementById('micText');
-            const status = document.getElementById('micStatus');
+            const btn = document.getElementById('fastMicBtn');
+            const txt = document.getElementById('fastMicText');
+            const status = document.getElementById('fastMicStatus');
 
-            if (!recording) {
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mediaRecorder = new MediaRecorder(stream);
-                    audioChunks = [];
+            recognition.onstart = function() {
+                txt.innerText = "ESCUCHANDO...";
+                btn.style.background = "#ff2a8d";
+                btn.style.boxShadow = "0 0 25px #ff2a8d";
+                status.innerText = "Habla ahora claramente...";
+            };
 
-                    mediaRecorder.ondataavailable = event => {
-                        audioChunks.push(event.data);
-                    };
+            recognition.onresult = function(event) {
+                const speechResult = event.results[0][0].transcript;
+                status.innerText = "¡Texto capturado! Enviando...";
+                window.parent.location.href = window.location.pathname + "?voice_q=" + encodeURIComponent(speechResult);
+            };
 
-                    mediaRecorder.onstop = async () => {
-                        status.innerText = "Procesando audio neural...";
-                        const audioBlob = new Blob(audioChunks, { type: 'audio/mp4' });
-                        const reader = new FileReader();
-                        reader.readAsDataURL(audioBlob);
-                        reader.onloadend = function() {
-                            const base64Audio = reader.result.split(',')[1];
-                            window.parent.location.href = window.location.pathname + "?voice_data=" + encodeURIComponent(base64Audio);
-                        }
-                    };
-
-                    mediaRecorder.start();
-                    recording = true;
-                    txt.innerText = "GRABANDO... (Toca para detener)";
-                    btn.style.background = "#ff2a8d";
-                    btn.style.boxShadow = "0 0 25px #ff2a8d";
-                    status.innerText = "Escuchando tu voz en vivo...";
-                } catch (err) {
-                    alert("Error al acceder al micrófono: " + err.message);
-                }
-            } else {
-                mediaRecorder.stop();
-                recording = false;
-                txt.innerText = "TOCAR PARA HABLAR";
+            recognition.onerror = function(event) {
+                txt.innerText = "HABLAR CON SAY";
                 btn.style.background = "linear-gradient(135deg, #00f0ff, #ec4899)";
                 btn.style.boxShadow = "0 0 20px rgba(0,240,255,0.5)";
-            }
+                status.innerText = "Error o silencio. Intenta de nuevo.";
+            };
+
+            recognition.onend = function() {
+                txt.innerText = "HABLAR CON SAY";
+                btn.style.background = "linear-gradient(135deg, #00f0ff, #ec4899)";
+                btn.style.boxShadow = "0 0 20px rgba(0,240,255,0.5)";
+            };
+
+            recognition.start();
         }
     </script>
     """
   components.html(voice_hud_html, height=140, scrolling=False)
 
-  # Capturar audio enviado por JavaScript de forma invisible
-  voice_base64_param = st.query_params.get("voice_data", None)
+  # Capturar consulta de voz instantánea
+  voice_param = st.query_params.get("voice_q", None)
   texto_a_procesar = None
 
-  if voice_base64_param:
+  if voice_param:
     st.query_params.clear()
-    with st.spinner("🎧 SAY AI analizando tu nota de voz directa..."):
-      audio_bytes = base64.b64decode(voice_base64_param)
-      for api_key in MASTER_KEYS:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key}"
-        payload = {
-            "contents": [{
-                "parts": [
-                    {
-                        "text": (
-                            "Escucha este audio y extrae únicamente la"
-                            " pregunta o consulta principal formulada por el"
-                            " usuario en español."
-                        )
-                    },
-                    {
-                        "inline_data": {
-                            "mime_type": "audio/mp4",
-                            "data": voice_base64_param,
-                        }
-                    },
-                ]
-            }]
-        }
-        data_bytes = json.dumps(payload).encode("utf-8")
-        req = urllib.request.Request(url, data=data_bytes, method="POST")
-        req.add_header("Content-Type", "application/json")
-        try:
-          with urllib.request.urlopen(req) as response:
-            res_body = response.read().decode("utf-8")
-            data = json.loads(res_body)
-            texto_a_procesar = (
-                data.get("candidates", [{}])[0]
-                .get("content", {})
-                .get("parts", [{}])[0]
-                .get("text")
-            )
-            break
-        except Exception:
-          continue
+    texto_a_procesar = voice_param
 
-    if texto_a_procesar:
-      st.session_state.messages.append(
-          {"role": "user", "content": f"🎤 Nota de voz: {texto_a_procesar}"}
-      )
-      with st.chat_message("user"):
-        st.markdown(f"🎤 Transcripción: **{texto_a_procesar}**")
-
-      with st.spinner("SAY AI generando respuesta..."):
-        respuesta = consultar_gemini_con_pool(texto_a_procesar)
-        st.markdown(respuesta)
-      st.session_state.messages.append(
-          {"role": "assistant", "content": respuesta}
-      )
-      st.rerun()
-
-  # Entrada tradicional de texto por respaldo
+  # Entrada tradicional por texto como respaldo
   if prompt := st.chat_input("O escribe tu consulta aquí..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    texto_a_procesar = prompt
+
+  if texto_a_procesar:
+    st.session_state.messages.append({"role": "user", "content": texto_a_procesar})
     with st.chat_message("user"):
-      st.markdown(prompt)
+      st.markdown(texto_a_procesar)
 
     with st.chat_message("assistant"):
-      with st.spinner("SAY AI analizando..."):
-        respuesta = consultar_gemini_con_pool(prompt)
+      with st.spinner("SAY AI procesando tu solicitud a velocidad máxima..."):
+        respuesta = consultar_gemini_con_pool(texto_a_procesar)
         st.markdown(respuesta)
     st.session_state.messages.append(
         {"role": "assistant", "content": respuesta}
-          )
-      
+    )
+    st.rerun()
+    
