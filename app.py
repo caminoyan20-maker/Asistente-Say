@@ -1,5 +1,6 @@
 import json
 import os
+import urllib.parse
 import urllib.request
 import streamlit.components.v1 as components
 import streamlit as st
@@ -8,7 +9,7 @@ DB_FILE = "usuarios.json"
 MASTER_KEYS = st.secrets.get("MASTER_KEYS", [])
 
 st.set_page_config(
-    page_title="SAY - Cyber Neural Core v3.1", page_icon="🤖", layout="centered"
+    page_title="SAY - Cyber Neural Core v3.2", page_icon="🤖", layout="centered"
 )
 
 # Estilos Cyber Neon avanzados
@@ -135,7 +136,7 @@ usuarios = cargar_usuarios()
 # Encabezado Visual
 st.markdown('<h1 class="title-say">SAY</h1>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="cyber-subtitle">[ Interfaz Neural & Multimedia Libre v3.1'
+    '<div class="cyber-subtitle">[ Interfaz Neural & Multimedia Pro v3.2'
     " ]</div>",
     unsafe_allow_html=True,
 )
@@ -171,7 +172,7 @@ else:
   c_inf, c_btn = st.columns([3, 1])
   with c_inf:
     st.markdown(
-        f"👤 **{st.session_state.usuario_actual}** | Núcleo Multimedia Activo"
+        f"👤 **{st.session_state.usuario_actual}** | Núcleo Pro Activo"
     )
   with c_btn:
     if st.button("Salir"):
@@ -180,37 +181,63 @@ else:
 
   st.markdown("---")
 
-  # Panel de Reproductor Multimedia Libre (Web + Librería Local del Teléfono)
-  with st.expander("🎧 Reproductor Multimedia & Música Libre"):
-    tab_web, tab_local = st.tabs(
-        ["🌐 Streaming / Web Audio", "📱 Música de mi Teléfono"]
+  # Panel de Reproductor Multimedia Pro (Buscador Web + Carga Múltiple Local)
+  with st.expander("🎧 Reproductor Multimedia & Librería Pro"):
+    tab_yt, tab_folder = st.tabs(
+        ["🎵 Buscador YouTube Music", "📂 Librería Múltiple / Carpeta Local"]
     )
 
-    with tab_web:
+    with tab_yt:
       st.markdown(
-          "Pega el enlace directo de cualquier archivo de audio o música de la"
-          " web:"
+          "Escribe el nombre de la canción o artista y búscala directamente:"
       )
-      url_web_musica = st.text_input(
-          "URL de audio (.mp3, .ogg, etc.):",
-          placeholder="https://ejemplo.com/cancion.mp3",
+      query_musica = st.text_input(
+          "¿Qué música quieres escuchar?",
+          placeholder="Ej: Lo-Fi chill beats, electronic...",
       )
-      if url_web_musica:
-        st.audio(url_web_musica, format="audio/mp3")
+      if query_musica:
+        # Generador de búsqueda integrada con reproductor incrustado
+        encoded_query = urllib.parse.quote(query_musica)
+        st.markdown(
+            f"🔍 Buscando **{query_musica}** en la red de streaming..."
+        )
+        # Widget embebido para acceso rápido de reproducción
+        components.html(
+            f"""
+            <div style="background: rgba(8, 14, 28, 0.95); border: 1px solid rgba(0, 240, 255, 0.4); border-radius: 10px; padding: 10px; text-align: center;">
+                <p style="color: #38bdf8; font-family: monospace; font-size: 12px; margin-bottom: 8px;">Reproductor de resultados para: {query_musica}</p>
+                <iframe width="100%" height="160" src="https://www.youtube.com/embed?listType=search&list={encoded_query}" frameborder="0" allowfullscreen></iframe>
+            </div>
+            """,
+            height=200,
+        )
 
-    with tab_local:
+    with tab_folder:
       st.markdown(
-          "Selecciona una canción directamente desde la memoria de tu"
-          " dispositivo:"
+          "Selecciona **varios archivos a la vez** o una carpeta completa con"
+          " tu música desde el teléfono:"
       )
-      musica_local = st.file_uploader(
-          "Buscar archivo de música en el teléfono:",
+      archivos_multiples = st.file_uploader(
+          "Sube tu selección masiva de canciones:",
           type=["mp3", "wav", "m4a", "aac", "ogg"],
-          key="local_music_file",
+          accept_multiple_files=True,
+          key="multi_music",
       )
-      if musica_local is not None:
-        st.audio(musica_local, format="audio/mp3")
-        st.success(f"Reproduciendo: {musica_local.name}")
+
+      if archivos_multiples:
+        st.success(
+            f"🎉 ¡{len(archivos_multiples)} canciones cargadas en tu librería"
+            " local!"
+        )
+        nombres_canciones = [file.name for file in archivos_multiples]
+        cancion_elegida = st.selectbox(
+            "Selecciona de tu lista de reproducción:", nombres_canciones
+        )
+
+        for archivo in archivos_multiples:
+          if archivo.name == cancion_elegida:
+            st.audio(archivo, format="audio/mp3")
+            break
 
   st.markdown("---")
 
@@ -245,5 +272,5 @@ else:
         st.markdown(respuesta)
     st.session_state.messages.append(
         {"role": "assistant", "content": respuesta}
-      )
+        )
       
