@@ -1,3 +1,4 @@
+import base64
 import json
 import os
 import urllib.parse
@@ -9,7 +10,7 @@ DB_FILE = "usuarios.json"
 MASTER_KEYS = st.secrets.get("MASTER_KEYS", [])
 
 st.set_page_config(
-    page_title="SAY - Cyber Neural Core v3.2", page_icon="🤖", layout="centered"
+    page_title="SAY - Cyber Neural Core v3.3", page_icon="🤖", layout="centered"
 )
 
 # Estilos Cyber Neon avanzados
@@ -136,7 +137,7 @@ usuarios = cargar_usuarios()
 # Encabezado Visual
 st.markdown('<h1 class="title-say">SAY</h1>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="cyber-subtitle">[ Interfaz Neural & Multimedia Pro v3.2'
+    '<div class="cyber-subtitle">[ Interfaz Neural & Multimedia Contínuo v3.3'
     " ]</div>",
     unsafe_allow_html=True,
 )
@@ -172,7 +173,7 @@ else:
   c_inf, c_btn = st.columns([3, 1])
   with c_inf:
     st.markdown(
-        f"👤 **{st.session_state.usuario_actual}** | Núcleo Pro Activo"
+        f"👤 **{st.session_state.usuario_actual}** | Núcleo Multimedia Activo"
     )
   with c_btn:
     if st.button("Salir"):
@@ -181,63 +182,93 @@ else:
 
   st.markdown("---")
 
-  # Panel de Reproductor Multimedia Pro (Buscador Web + Carga Múltiple Local)
-  with st.expander("🎧 Reproductor Multimedia & Librería Pro"):
-    tab_yt, tab_folder = st.tabs(
-        ["🎵 Buscador YouTube Music", "📂 Librería Múltiple / Carpeta Local"]
+  # Panel de Reproductor Multimedia Optimizado (Audio Web Directo + Reproductor en Cadena)
+  with st.expander("🎧 Reproductor Multimedia & Playlist Automática"):
+    tab_web, tab_local = st.tabs(
+        ["🌐 Buscador de Audio Web", "📱 Playlist Local Continua"]
     )
 
-    with tab_yt:
+    with tab_web:
       st.markdown(
-          "Escribe el nombre de la canción o artista y búscala directamente:"
+          "Busca música en streaming directo (enfocado estrictamente en"
+          " audio):"
       )
-      query_musica = st.text_input(
-          "¿Qué música quieres escuchar?",
-          placeholder="Ej: Lo-Fi chill beats, electronic...",
+      query_audio = st.text_input(
+          "Escribe artista o canción:",
+          placeholder="Ej: Bad Bunny mix audio...",
       )
-      if query_musica:
-        # Generador de búsqueda integrada con reproductor incrustado
-        encoded_query = urllib.parse.quote(query_musica)
-        st.markdown(
-            f"🔍 Buscando **{query_musica}** en la red de streaming..."
-        )
-        # Widget embebido para acceso rápido de reproducción
+      if query_audio:
+        encoded_q = urllib.parse.quote(query_audio)
+        # Reproductor optimizado para audio/streaming embebido limpio
         components.html(
             f"""
-            <div style="background: rgba(8, 14, 28, 0.95); border: 1px solid rgba(0, 240, 255, 0.4); border-radius: 10px; padding: 10px; text-align: center;">
-                <p style="color: #38bdf8; font-family: monospace; font-size: 12px; margin-bottom: 8px;">Reproductor de resultados para: {query_musica}</p>
-                <iframe width="100%" height="160" src="https://www.youtube.com/embed?listType=search&list={encoded_query}" frameborder="0" allowfullscreen></iframe>
+            <div style="background: rgba(8, 14, 28, 0.95); border: 1px solid rgba(0, 240, 255, 0.4); border-radius: 10px; padding: 12px; text-align: center;">
+                <p style="color: #38bdf8; font-family: monospace; font-size: 11px; margin-bottom: 6px;">Sintonizando audio para: {query_audio}</p>
+                <iframe width="100%" height="110" src="https://www.youtube.com/embed?listType=search&list={encoded_q}&autoplay=1" frameborder="0" allow="autoplay"></iframe>
             </div>
             """,
-            height=200,
+            height=140,
         )
 
-    with tab_folder:
+    with tab_local:
       st.markdown(
-          "Selecciona **varios archivos a la vez** o una carpeta completa con"
-          " tu música desde el teléfono:"
+          "Sube tu selección múltiple de canciones del teléfono. ¡Se"
+          " reproducirán una tras otra automáticamente sin parar!"
       )
-      archivos_multiples = st.file_uploader(
-          "Sube tu selección masiva de canciones:",
+      archivos_locales = st.file_uploader(
+          "Selecciona tus canciones locales:",
           type=["mp3", "wav", "m4a", "aac", "ogg"],
           accept_multiple_files=True,
-          key="multi_music",
+          key="playlist_local",
       )
 
-      if archivos_multiples:
+      if archivos_locales:
         st.success(
-            f"🎉 ¡{len(archivos_multiples)} canciones cargadas en tu librería"
-            " local!"
-        )
-        nombres_canciones = [file.name for file in archivos_multiples]
-        cancion_elegida = st.selectbox(
-            "Selecciona de tu lista de reproducción:", nombres_canciones
+            f"🎶 Playlist cargada con éxito: {len(archivos_locales)} pistas en"
+            " cola."
         )
 
-        for archivo in archivos_multiples:
-          if archivo.name == cancion_elegida:
-            st.audio(archivo, format="audio/mp3")
-            break
+        # Convertir archivos locales a base64 para inyectarlos en la lista de reproducción continua de JS
+        playlist_data = []
+        for file in archivos_locales:
+          b64_data = base64.b64encode(file.read()).decode("utf-8")
+          playlist_data.append({"name": file.name, "data": b64_data})
+
+        playlist_json = json.dumps(playlist_data)
+
+        # Reproductor JavaScript continuo (Autoplay en cadena sin pausas)
+        playlist_html = f"""
+                <div style="background: rgba(8, 14, 28, 0.95); border: 1px solid rgba(0, 240, 255, 0.4); border-radius: 12px; padding: 15px; text-align: center;">
+                    <div id="trackTitle" style="color: #00f0ff; font-family: 'Rajdhani', sans-serif; font-weight: bold; font-size: 14px; margin-bottom: 10px;">Preparando Playlist...</div>
+                    <audio id="audioPlayer" controls autoplay style="width: 100%; filter: drop-shadow(0 0 5px rgba(0,240,255,0.5));"></audio>
+                </div>
+                <script>
+                    const playlist = {playlist_json};
+                    let currentIndex = 0;
+                    const audioElem = document.getElementById('audioPlayer');
+                    const titleElem = document.getElementById('trackTitle');
+
+                    function loadTrack(index) {{
+                        if (index >= playlist.length) {{
+                            currentIndex = 0; // Reinicia la playlist al terminar todas
+                        }}
+                        const track = playlist[currentIndex];
+                        titleElem.innerText = "▶ Reproduciendo: " + track.name;
+                        audioElem.src = "data:audio/mp3;base64," + track.data;
+                        audioElem.play().catch(e => console.log("Autoplay bloqueado por navegador, presiona play:", e));
+                    }}
+
+                    audioElem.onended = function() {{
+                        currentIndex++;
+                        loadTrack(currentIndex);
+                    }};
+
+                    if (playlist.length > 0) {{
+                        loadTrack(0);
+                    }}
+                </script>
+                """
+        components.html(playlist_html, height=130)
 
   st.markdown("---")
 
@@ -272,5 +303,5 @@ else:
         st.markdown(respuesta)
     st.session_state.messages.append(
         {"role": "assistant", "content": respuesta}
-        )
+    )
       
