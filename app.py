@@ -10,7 +10,7 @@ DB_FILE = "usuarios.json"
 MASTER_KEYS = st.secrets.get("MASTER_KEYS", [])
 
 st.set_page_config(
-    page_title="SAY - Cyber Neural Core v3.3", page_icon="🤖", layout="centered"
+    page_title="SAY - Cyber Neural Core v3.4", page_icon="🤖", layout="centered"
 )
 
 # Estilos Cyber Neon avanzados
@@ -85,21 +85,35 @@ def consultar_gemini_con_pool(mensaje, modo):
   if not MASTER_KEYS:
     return "❌ Error: Configura MASTER_KEYS en los Secrets de Streamlit."
 
+  # Configuración ampliada para garantizar respuestas grandes, completas y detalladas
   configs = {
-      "🚀 Búsqueda Rápida": {"maxOutputTokens": 400, "temperature": 0.5},
-      "⚖️ Equilibrado": {"maxOutputTokens": 1000, "temperature": 0.7},
-      "🔍 Profundo": {"maxOutputTokens": 2000, "temperature": 0.8},
-      "🔬 Muy Minucioso": {"maxOutputTokens": 4000, "temperature": 0.3},
+      "🚀 Búsqueda Rápida": {"maxOutputTokens": 2000, "temperature": 0.5},
+      "⚖️ Equilibrado": {"maxOutputTokens": 4000, "temperature": 0.7},
+      "🔍 Profundo": {"maxOutputTokens": 6000, "temperature": 0.8},
+      "🔬 Muy Minucioso": {"maxOutputTokens": 8192, "temperature": 0.3},
   }
 
   cfg = configs.get(
-      modo, {"maxOutputTokens": 1000, "temperature": 0.7}
+      modo, {"maxOutputTokens": 4000, "temperature": 0.7}
+  )
+
+  system_prompt = (
+      "Eres SAY AI, un motor de búsqueda y asistencia técnica de nivel"
+      " superior. Cada vez que el usuario haga una pregunta, debes"
+      " proporcionar una respuesta EXHAUSTIVA, EXTENSA, DETALLADA y PROFUNDA."
+      " Explica los conceptos con contexto completo, antecedentes, definiciones"
+      " claras, ejemplos y estructúrala de forma ordenada con viñetas o"
+      " secciones si es necesario. NUNCA des respuestas cortas, incompletas o"
+      " de una sola línea a menos que se pida explícitamente."
   )
 
   for api_key in MASTER_KEYS:
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key.strip()}"
     payload = {
-        "contents": [{"role": "user", "parts": [{"text": mensaje}]}],
+        "contents": [
+            {"role": "user", "parts": [{"text": system_prompt}]},
+            {"role": "user", "parts": [{"text": mensaje}]},
+        ],
         "generationConfig": {
             "temperature": cfg["temperature"],
             "maxOutputTokens": cfg["maxOutputTokens"],
@@ -109,7 +123,7 @@ def consultar_gemini_con_pool(mensaje, modo):
     req = urllib.request.Request(url, data=data_bytes, method="POST")
     req.add_header("Content-Type", "application/json")
     try:
-      with urllib.request.urlopen(req, timeout=10) as response:
+      with urllib.request.urlopen(req, timeout=15) as response:
         res_body = response.read().decode("utf-8")
         data = json.loads(res_body)
         texto_respuesta = (
@@ -137,7 +151,7 @@ usuarios = cargar_usuarios()
 # Encabezado Visual
 st.markdown('<h1 class="title-say">SAY</h1>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="cyber-subtitle">[ Interfaz Neural & Multimedia Contínuo v3.3'
+    '<div class="cyber-subtitle">[ Interfaz Neural & Búsqueda Exhaustiva v3.4'
     " ]</div>",
     unsafe_allow_html=True,
 )
@@ -173,7 +187,7 @@ else:
   c_inf, c_btn = st.columns([3, 1])
   with c_inf:
     st.markdown(
-        f"👤 **{st.session_state.usuario_actual}** | Núcleo Multimedia Activo"
+        f"👤 **{st.session_state.usuario_actual}** | Núcleo Exhaustivo Activo"
     )
   with c_btn:
     if st.button("Salir"):
@@ -182,7 +196,7 @@ else:
 
   st.markdown("---")
 
-  # Panel de Reproductor Multimedia Optimizado (Audio Web Directo + Reproductor en Cadena)
+  # Panel de Reproductor Multimedia (Audio Web Limpio + Playlist Local Continua)
   with st.expander("🎧 Reproductor Multimedia & Playlist Automática"):
     tab_web, tab_local = st.tabs(
         ["🌐 Buscador de Audio Web", "📱 Playlist Local Continua"]
@@ -199,7 +213,6 @@ else:
       )
       if query_audio:
         encoded_q = urllib.parse.quote(query_audio)
-        # Reproductor optimizado para audio/streaming embebido limpio
         components.html(
             f"""
             <div style="background: rgba(8, 14, 28, 0.95); border: 1px solid rgba(0, 240, 255, 0.4); border-radius: 10px; padding: 12px; text-align: center;">
@@ -228,7 +241,6 @@ else:
             " cola."
         )
 
-        # Convertir archivos locales a base64 para inyectarlos en la lista de reproducción continua de JS
         playlist_data = []
         for file in archivos_locales:
           b64_data = base64.b64encode(file.read()).decode("utf-8")
@@ -236,7 +248,6 @@ else:
 
         playlist_json = json.dumps(playlist_data)
 
-        # Reproductor JavaScript continuo (Autoplay en cadena sin pausas)
         playlist_html = f"""
                 <div style="background: rgba(8, 14, 28, 0.95); border: 1px solid rgba(0, 240, 255, 0.4); border-radius: 12px; padding: 15px; text-align: center;">
                     <div id="trackTitle" style="color: #00f0ff; font-family: 'Rajdhani', sans-serif; font-weight: bold; font-size: 14px; margin-bottom: 10px;">Preparando Playlist...</div>
@@ -250,12 +261,12 @@ else:
 
                     function loadTrack(index) {{
                         if (index >= playlist.length) {{
-                            currentIndex = 0; // Reinicia la playlist al terminar todas
+                            currentIndex = 0;
                         }}
                         const track = playlist[currentIndex];
                         titleElem.innerText = "▶ Reproduciendo: " + track.name;
                         audioElem.src = "data:audio/mp3;base64," + track.data;
-                        audioElem.play().catch(e => console.log("Autoplay bloqueado por navegador, presiona play:", e));
+                        audioElem.play().catch(e => console.log("Autoplay bloqueado:", e));
                     }}
 
                     audioElem.onended = function() {{
@@ -272,7 +283,7 @@ else:
 
   st.markdown("---")
 
-  # Selector de Nivel de Análisis y Búsqueda Inteligente
+  # Selector de Nivel de Análisis Exhaustivo
   modo_busqueda = st.selectbox(
       "⚡ Selecciona el Nivel de Análisis:",
       [
@@ -291,17 +302,19 @@ else:
       st.markdown(message["content"])
 
   if prompt := st.chat_input(
-      "Escribe tu consulta en el motor de búsqueda de SAY..."
+      "Escribe tu consulta detallada en el motor de búsqueda..."
   ):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
       st.markdown(prompt)
 
     with st.chat_message("assistant"):
-      with st.spinner(f"SAY AI procesando en modo [{modo_busqueda}]..."):
+      with st.spinner(
+          f"SAY AI generando información exhaustiva en modo [{modo_busqueda}]..."
+      ):
         respuesta = consultar_gemini_con_pool(prompt, modo_busqueda)
         st.markdown(respuesta)
     st.session_state.messages.append(
         {"role": "assistant", "content": respuesta}
-    )
+                                                )
       
