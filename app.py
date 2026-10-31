@@ -8,10 +8,10 @@ DB_FILE = "usuarios.json"
 MASTER_KEYS = st.secrets.get("MASTER_KEYS", [])
 
 st.set_page_config(
-    page_title="SAY - Cyber Neon Voice v2.9", page_icon="🤖", layout="centered"
+    page_title="SAY - Cyber Neural Core v3.0", page_icon="🤖", layout="centered"
 )
 
-# Estilos Cyber Neon
+# Estilos Cyber Neon avanzados con reproductor flotante
 st.markdown(
     """
     <style>
@@ -79,25 +79,36 @@ def guardar_usuarios(usuarios):
     json.dump(usuarios, f, indent=4)
 
 
-def consultar_gemini_con_pool(mensaje):
+def consultar_gemini_con_pool(mensaje, modo):
   if not MASTER_KEYS:
     return "❌ Error: Configura tus claves maestras en los Secrets."
 
+  # Configuración de tokens y temperatura según el modo seleccionado
+  configs = {
+      "🚀 Búsqueda Rápida": {"maxOutputTokens": 400, "temperature": 0.5},
+      "⚖️ Equilibrado": {"maxOutputTokens": 1000, "temperature": 0.7},
+      "🔍 Profundo": {"maxOutputTokens": 2000, "temperature": 0.8},
+      "🔬 Muy Minucioso": {"maxOutputTokens": 4000, "temperature": 0.3},
+  }
+
+  cfg = configs.get(
+      modo, {"maxOutputTokens": 1000, "temperature": 0.7}
+  )
+
   for api_key in MASTER_KEYS:
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key}"
-    # Payload optimizado para velocidad máxima (respuestas directas y al grano)
     payload = {
         "contents": [{"role": "user", "parts": [{"text": mensaje}]}],
         "generationConfig": {
-            "temperature": 0.7,
-            "maxOutputTokens": 800,  # Limita el tamaño para que responda volando
+            "temperature": cfg["temperature"],
+            "maxOutputTokens": cfg["maxOutputTokens"],
         },
     }
     data_bytes = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(url, data=data_bytes, method="POST")
     req.add_header("Content-Type", "application/json")
     try:
-      with urllib.request.urlopen(req, timeout=8) as response:
+      with urllib.request.urlopen(req, timeout=12) as response:
         res_body = response.read().decode("utf-8")
         data = json.loads(res_body)
         return (
@@ -119,7 +130,7 @@ usuarios = cargar_usuarios()
 # Encabezado Visual
 st.markdown('<h1 class="title-say">SAY</h1>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="cyber-subtitle">[ Interfaz Neural & Velocidad Turbo v2.9'
+    '<div class="cyber-subtitle">[ Interfaz Neural & Búsqueda Eficiente v3.0'
     " ]</div>",
     unsafe_allow_html=True,
 )
@@ -155,7 +166,7 @@ else:
   c_inf, c_btn = st.columns([3, 1])
   with c_inf:
     st.markdown(
-        f"👤 **{st.session_state.usuario_actual}** | Núcleo Turbo Activo"
+        f"👤 **{st.session_state.usuario_actual}** | Núcleo de Búsqueda Activo"
     )
   with c_btn:
     if st.button("Salir"):
@@ -164,6 +175,42 @@ else:
 
   st.markdown("---")
 
+  # Panel desplegable de Librería de Música Integrada
+  with st.expander("🎵 Librería de Música & Audio Cyber Neon"):
+    st.markdown(
+        "Escucha tus pistas o música ambiental integrada mientras navegas en"
+        " SAY:"
+    )
+    # Lista de reproducción con pistas libres de alta calidad / Lo-Fi Cyber
+    musica_opciones = {
+        "Synthwave Cyber Neon": (
+            "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+        ),
+        "Ambient Space Lo-Fi": (
+            "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"
+        ),
+        "Neural Chill Beats": (
+            "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"
+        ),
+    }
+    pista_seleccionada = st.selectbox(
+        "Selecciona pista musical:", list(musica_opciones.keys())
+    )
+    st.audio(musica_opciones[pista_seleccionada], format="audio/mp3")
+
+  st.markdown("---")
+
+  # Selector de Modo de Búsqueda Inteligente
+  modo_busqueda = st.selectbox(
+      "⚡ Selecciona el Nivel de Análisis:",
+      [
+          "🚀 Búsqueda Rápida",
+          "⚖️ Equilibrado",
+          "🔍 Profundo",
+          "🔬 Muy Minucioso",
+      ],
+  )
+
   if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -171,85 +218,19 @@ else:
     with st.chat_message(message["role"]):
       st.markdown(message["content"])
 
-  # Módulo de Voz Turbo Multilingüe
-  voice_hud_html = """
-    <div style="background: rgba(8, 14, 28, 0.95); border: 1px solid rgba(0, 240, 255, 0.4); box-shadow: 0 0 15px rgba(0, 240, 255, 0.2); border-radius: 12px; padding: 15px; text-align: center; margin-bottom: 15px;">
-        <div style="font-family: 'Share Tech Mono', monospace; color: #38bdf8; font-size: 0.8rem; margin-bottom: 10px;">[ NÚCLEO DE VOZ TURBO ]</div>
-        <button id="fastMicBtn" onclick="startFastVoice()" style="background: linear-gradient(135deg, #00f0ff, #ec4899); border: none; border-radius: 30px; color: white; padding: 12px 25px; font-weight: bold; cursor: pointer; font-family: 'Rajdhani', sans-serif; box-shadow: 0 0 20px rgba(0,240,255,0.5); font-size: 16px; width: 100%; max-width: 280px; transition: all 0.3s ease;">
-            🎙️ <span id="fastMicText">HABLAR CON SAY</span>
-        </button>
-        <div id="fastMicStatus" style="font-family: 'Share Tech Mono', monospace; font-size: 0.75rem; color: #00f0ff; margin-top: 8px;">Listo para búsqueda instantánea</div>
-    </div>
-
-    <script>
-        function startFastVoice() {
-            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-                alert('Tu dispositivo no soporta reconocimiento de voz directo.');
-                return;
-            }
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            const recognition = new SpeechRecognition();
-            
-            recognition.lang = ''; // Detección automática de idioma
-            recognition.interimResults = false;
-            recognition.maxAlternatives = 1;
-
-            const btn = document.getElementById('fastMicBtn');
-            const txt = document.getElementById('fastMicText');
-            const status = document.getElementById('fastMicStatus');
-
-            recognition.onstart = function() {
-                txt.innerText = "ESCUCHANDO...";
-                btn.style.background = "#ff2a8d";
-                btn.style.boxShadow = "0 0 25px #ff2a8d";
-                status.innerText = "Habla ahora...";
-            };
-
-            recognition.onresult = function(event) {
-                const speechResult = event.results[0][0].transcript;
-                status.innerText = "Buscando respuesta...";
-                window.parent.location.href = window.location.pathname + "?voice_q=" + encodeURIComponent(speechResult);
-            };
-
-            recognition.onerror = function() {
-                txt.innerText = "HABLAR CON SAY";
-                btn.style.background = "linear-gradient(135deg, #00f0ff, #ec4899)";
-                btn.style.boxShadow = "0 0 20px rgba(0,240,255,0.5)";
-                status.innerText = "Intenta de nuevo.";
-            };
-
-            recognition.onend = function() {
-                txt.innerText = "HABLAR CON SAY";
-                btn.style.background = "linear-gradient(135deg, #00f0ff, #ec4899)";
-                btn.style.boxShadow = "0 0 20px rgba(0,240,255,0.5)";
-            };
-
-            recognition.start();
-        }
-    </script>
-    """
-  components.html(voice_hud_html, height=140, scrolling=False)
-
-  voice_param = st.query_params.get("voice_q", None)
-  texto_a_procesar = None
-
-  if voice_param:
-    st.query_params.clear()
-    texto_a_procesar = voice_param
-
-  if prompt := st.chat_input("O escribe tu consulta aquí..."):
-    texto_a_procesar = prompt
-
-  if texto_a_procesar:
-    st.session_state.messages.append({"role": "user", "content": texto_a_procesar})
+  # Cuadro de chat optimizado para texto veloz y eficiente
+  if prompt := st.chat_input(
+      "Escribe tu consulta en el motor de búsqueda de SAY..."
+  ):
+    st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
-      st.markdown(texto_a_procesar)
+      st.markdown(prompt)
 
     with st.chat_message("assistant"):
-      with st.spinner("SAY AI respondiendo en modo turbo..."):
-        respuesta = consultar_gemini_con_pool(texto_a_procesar)
+      with st.spinner(f"SAY AI procesando en modo [{modo_busqueda}]..."):
+        respuesta = consultar_gemini_con_pool(prompt, modo_busqueda)
         st.markdown(respuesta)
     st.session_state.messages.append(
         {"role": "assistant", "content": respuesta}
     )
-    st.rerun()
+    
