@@ -10,7 +10,7 @@ DB_FILE = "usuarios.json"
 MASTER_KEYS = st.secrets.get("MASTER_KEYS", [])
 
 st.set_page_config(
-    page_title="SAY - Cyber Neural Core v3.6", page_icon="🤖", layout="centered"
+    page_title="SAY - Cyber Neural Core v3.7", page_icon="🤖", layout="centered"
 )
 
 # Estilos Cyber Neon avanzados
@@ -83,10 +83,7 @@ def guardar_usuarios(usuarios):
 
 def consultar_gemini_con_pool(mensaje, modo):
   if not MASTER_KEYS:
-    return (
-        "❌ Error: Configura MASTER_KEYS correctamente en los Secrets de"
-        " Streamlit."
-    )
+    return "❌ Error: Configura MASTER_KEYS en los Secrets de Streamlit."
 
   configs = {
       "🚀 Búsqueda Rápida": {"maxOutputTokens": 2000, "temperature": 0.5},
@@ -99,20 +96,18 @@ def consultar_gemini_con_pool(mensaje, modo):
       modo, {"maxOutputTokens": 4000, "temperature": 0.7}
   )
 
-  system_instruction = (
-      "Eres SAY AI, un motor de búsqueda avanzado. Proporciona siempre una"
-      " respuesta exhaustiva, extensa, detallada y profunda sobre el tema"
-      " consultado, explicando conceptos con contexto completo, definiciones y"
-      " una estructura ordenada."
+  prompt_amplio = (
+      "Actúa como SAY AI, un motor de búsqueda avanzado. Proporciona una"
+      " respuesta exhaustiva, extensa, detallada y profunda sobre el siguiente"
+      " tema, explicando conceptos con contexto completo, definiciones y"
+      " estructura ordenada.\n\nConsulta: "
+      + mensaje
   )
 
   for api_key in MASTER_KEYS:
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key.strip()}"
     payload = {
-        "system_instruction": {
-            "parts": [{"text": system_instruction}]
-        },
-        "contents": [{"role": "user", "parts": [{"text": mensaje}]}],
+        "contents": [{"role": "user", "parts": [{"text": prompt_amplio}]}],
         "generationConfig": {
             "temperature": cfg["temperature"],
             "maxOutputTokens": cfg["maxOutputTokens"],
@@ -122,7 +117,8 @@ def consultar_gemini_con_pool(mensaje, modo):
     req = urllib.request.Request(url, data=data_bytes, method="POST")
     req.add_header("Content-Type", "application/json")
     try:
-      with urllib.request.urlopen(req, timeout=20) as response:
+      # Timeout ampliado a 30 segundos para soportar conexiones de red lentas
+      with urllib.request.urlopen(req, timeout=30) as response:
         res_body = response.read().decode("utf-8")
         data = json.loads(res_body)
         texto_respuesta = (
@@ -137,8 +133,8 @@ def consultar_gemini_con_pool(mensaje, modo):
       continue
 
   return (
-      "⚠️ Error de conexión: Revisa que tus claves en MASTER_KEYS sean válidas"
-      " y tengan cuota activa."
+      "⚠️ La conexión de red es muy lenta o inestable. Espera un momento e"
+      " intenta de nuevo."
   )
 
 
@@ -150,7 +146,7 @@ usuarios = cargar_usuarios()
 # Encabezado Visual
 st.markdown('<h1 class="title-say">SAY</h1>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="cyber-subtitle">[ Interfaz Neural & Búsqueda Exhaustiva v3.6'
+    '<div class="cyber-subtitle">[ Interfaz Neural & Búsqueda Exhaustiva v3.7'
     " ]</div>",
     unsafe_allow_html=True,
 )
@@ -315,5 +311,5 @@ else:
         st.markdown(respuesta)
     st.session_state.messages.append(
         {"role": "assistant", "content": respuesta}
-    )
-      
+        )
+          
