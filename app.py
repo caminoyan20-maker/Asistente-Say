@@ -10,7 +10,7 @@ DB_FILE = "usuarios.json"
 MASTER_KEYS = st.secrets.get("MASTER_KEYS", [])
 
 st.set_page_config(
-    page_title="SAY - Cyber Neural Core v3.4", page_icon="🤖", layout="centered"
+    page_title="SAY - Cyber Neural Core v3.6", page_icon="🤖", layout="centered"
 )
 
 # Estilos Cyber Neon avanzados
@@ -83,9 +83,11 @@ def guardar_usuarios(usuarios):
 
 def consultar_gemini_con_pool(mensaje, modo):
   if not MASTER_KEYS:
-    return "❌ Error: Configura MASTER_KEYS en los Secrets de Streamlit."
+    return (
+        "❌ Error: Configura MASTER_KEYS correctamente en los Secrets de"
+        " Streamlit."
+    )
 
-  # Configuración ampliada para garantizar respuestas grandes, completas y detalladas
   configs = {
       "🚀 Búsqueda Rápida": {"maxOutputTokens": 2000, "temperature": 0.5},
       "⚖️ Equilibrado": {"maxOutputTokens": 4000, "temperature": 0.7},
@@ -97,23 +99,20 @@ def consultar_gemini_con_pool(mensaje, modo):
       modo, {"maxOutputTokens": 4000, "temperature": 0.7}
   )
 
-  system_prompt = (
-      "Eres SAY AI, un motor de búsqueda y asistencia técnica de nivel"
-      " superior. Cada vez que el usuario haga una pregunta, debes"
-      " proporcionar una respuesta EXHAUSTIVA, EXTENSA, DETALLADA y PROFUNDA."
-      " Explica los conceptos con contexto completo, antecedentes, definiciones"
-      " claras, ejemplos y estructúrala de forma ordenada con viñetas o"
-      " secciones si es necesario. NUNCA des respuestas cortas, incompletas o"
-      " de una sola línea a menos que se pida explícitamente."
+  system_instruction = (
+      "Eres SAY AI, un motor de búsqueda avanzado. Proporciona siempre una"
+      " respuesta exhaustiva, extensa, detallada y profunda sobre el tema"
+      " consultado, explicando conceptos con contexto completo, definiciones y"
+      " una estructura ordenada."
   )
 
   for api_key in MASTER_KEYS:
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key.strip()}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key.strip()}"
     payload = {
-        "contents": [
-            {"role": "user", "parts": [{"text": system_prompt}]},
-            {"role": "user", "parts": [{"text": mensaje}]},
-        ],
+        "system_instruction": {
+            "parts": [{"text": system_instruction}]
+        },
+        "contents": [{"role": "user", "parts": [{"text": mensaje}]}],
         "generationConfig": {
             "temperature": cfg["temperature"],
             "maxOutputTokens": cfg["maxOutputTokens"],
@@ -123,7 +122,7 @@ def consultar_gemini_con_pool(mensaje, modo):
     req = urllib.request.Request(url, data=data_bytes, method="POST")
     req.add_header("Content-Type", "application/json")
     try:
-      with urllib.request.urlopen(req, timeout=15) as response:
+      with urllib.request.urlopen(req, timeout=20) as response:
         res_body = response.read().decode("utf-8")
         data = json.loads(res_body)
         texto_respuesta = (
@@ -134,12 +133,12 @@ def consultar_gemini_con_pool(mensaje, modo):
         )
         if texto_respuesta:
           return texto_respuesta
-    except Exception:
+    except Exception as e:
       continue
 
   return (
-      "⚠️ Las API keys están experimentando alta demanda. Intenta de nuevo en"
-      " un momento."
+      "⚠️ Error de conexión: Revisa que tus claves en MASTER_KEYS sean válidas"
+      " y tengan cuota activa."
   )
 
 
@@ -151,7 +150,7 @@ usuarios = cargar_usuarios()
 # Encabezado Visual
 st.markdown('<h1 class="title-say">SAY</h1>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="cyber-subtitle">[ Interfaz Neural & Búsqueda Exhaustiva v3.4'
+    '<div class="cyber-subtitle">[ Interfaz Neural & Búsqueda Exhaustiva v3.6'
     " ]</div>",
     unsafe_allow_html=True,
 )
@@ -316,5 +315,5 @@ else:
         st.markdown(respuesta)
     st.session_state.messages.append(
         {"role": "assistant", "content": respuesta}
-                                                )
+    )
       
