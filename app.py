@@ -8,10 +8,10 @@ DB_FILE = "usuarios.json"
 MASTER_KEYS = st.secrets.get("MASTER_KEYS", [])
 
 st.set_page_config(
-    page_title="SAY - Cyber Neural Core v3.0", page_icon="🤖", layout="centered"
+    page_title="SAY - Cyber Neural Core v3.1", page_icon="🤖", layout="centered"
 )
 
-# Estilos Cyber Neon avanzados con reproductor flotante
+# Estilos Cyber Neon avanzados
 st.markdown(
     """
     <style>
@@ -81,9 +81,8 @@ def guardar_usuarios(usuarios):
 
 def consultar_gemini_con_pool(mensaje, modo):
   if not MASTER_KEYS:
-    return "❌ Error: Configura tus claves maestras en los Secrets."
+    return "❌ Error: Configura MASTER_KEYS en los Secrets de Streamlit."
 
-  # Configuración de tokens y temperatura según el modo seleccionado
   configs = {
       "🚀 Búsqueda Rápida": {"maxOutputTokens": 400, "temperature": 0.5},
       "⚖️ Equilibrado": {"maxOutputTokens": 1000, "temperature": 0.7},
@@ -96,7 +95,7 @@ def consultar_gemini_con_pool(mensaje, modo):
   )
 
   for api_key in MASTER_KEYS:
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key.strip()}"
     payload = {
         "contents": [{"role": "user", "parts": [{"text": mensaje}]}],
         "generationConfig": {
@@ -108,18 +107,24 @@ def consultar_gemini_con_pool(mensaje, modo):
     req = urllib.request.Request(url, data=data_bytes, method="POST")
     req.add_header("Content-Type", "application/json")
     try:
-      with urllib.request.urlopen(req, timeout=12) as response:
+      with urllib.request.urlopen(req, timeout=10) as response:
         res_body = response.read().decode("utf-8")
         data = json.loads(res_body)
-        return (
+        texto_respuesta = (
             data.get("candidates", [{}])[0]
             .get("content", {})
             .get("parts", [{}])[0]
             .get("text")
         )
+        if texto_respuesta:
+          return texto_respuesta
     except Exception:
       continue
-  return "❌ Las claves del sistema están ocupadas temporalmente."
+
+  return (
+      "⚠️ Las API keys están experimentando alta demanda. Intenta de nuevo en"
+      " un momento."
+  )
 
 
 if "usuario_actual" not in st.session_state:
@@ -130,7 +135,7 @@ usuarios = cargar_usuarios()
 # Encabezado Visual
 st.markdown('<h1 class="title-say">SAY</h1>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="cyber-subtitle">[ Interfaz Neural & Búsqueda Eficiente v3.0'
+    '<div class="cyber-subtitle">[ Interfaz Neural & Multimedia Libre v3.1'
     " ]</div>",
     unsafe_allow_html=True,
 )
@@ -166,7 +171,7 @@ else:
   c_inf, c_btn = st.columns([3, 1])
   with c_inf:
     st.markdown(
-        f"👤 **{st.session_state.usuario_actual}** | Núcleo de Búsqueda Activo"
+        f"👤 **{st.session_state.usuario_actual}** | Núcleo Multimedia Activo"
     )
   with c_btn:
     if st.button("Salir"):
@@ -175,32 +180,41 @@ else:
 
   st.markdown("---")
 
-  # Panel desplegable de Librería de Música Integrada
-  with st.expander("🎵 Librería de Música & Audio Cyber Neon"):
-    st.markdown(
-        "Escucha tus pistas o música ambiental integrada mientras navegas en"
-        " SAY:"
+  # Panel de Reproductor Multimedia Libre (Web + Librería Local del Teléfono)
+  with st.expander("🎧 Reproductor Multimedia & Música Libre"):
+    tab_web, tab_local = st.tabs(
+        ["🌐 Streaming / Web Audio", "📱 Música de mi Teléfono"]
     )
-    # Lista de reproducción con pistas libres de alta calidad / Lo-Fi Cyber
-    musica_opciones = {
-        "Synthwave Cyber Neon": (
-            "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
-        ),
-        "Ambient Space Lo-Fi": (
-            "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"
-        ),
-        "Neural Chill Beats": (
-            "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"
-        ),
-    }
-    pista_seleccionada = st.selectbox(
-        "Selecciona pista musical:", list(musica_opciones.keys())
-    )
-    st.audio(musica_opciones[pista_seleccionada], format="audio/mp3")
+
+    with tab_web:
+      st.markdown(
+          "Pega el enlace directo de cualquier archivo de audio o música de la"
+          " web:"
+      )
+      url_web_musica = st.text_input(
+          "URL de audio (.mp3, .ogg, etc.):",
+          placeholder="https://ejemplo.com/cancion.mp3",
+      )
+      if url_web_musica:
+        st.audio(url_web_musica, format="audio/mp3")
+
+    with tab_local:
+      st.markdown(
+          "Selecciona una canción directamente desde la memoria de tu"
+          " dispositivo:"
+      )
+      musica_local = st.file_uploader(
+          "Buscar archivo de música en el teléfono:",
+          type=["mp3", "wav", "m4a", "aac", "ogg"],
+          key="local_music_file",
+      )
+      if musica_local is not None:
+        st.audio(musica_local, format="audio/mp3")
+        st.success(f"Reproduciendo: {musica_local.name}")
 
   st.markdown("---")
 
-  # Selector de Modo de Búsqueda Inteligente
+  # Selector de Nivel de Análisis y Búsqueda Inteligente
   modo_busqueda = st.selectbox(
       "⚡ Selecciona el Nivel de Análisis:",
       [
@@ -218,7 +232,6 @@ else:
     with st.chat_message(message["role"]):
       st.markdown(message["content"])
 
-  # Cuadro de chat optimizado para texto veloz y eficiente
   if prompt := st.chat_input(
       "Escribe tu consulta en el motor de búsqueda de SAY..."
   ):
@@ -232,5 +245,5 @@ else:
         st.markdown(respuesta)
     st.session_state.messages.append(
         {"role": "assistant", "content": respuesta}
-    )
-    
+      )
+      
