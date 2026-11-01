@@ -107,7 +107,8 @@ def consultar_gemini_con_pool(mensaje, modo):
       + mensaje
   )
 
-  modelos_flash = ["gemini-3.5-flash", "gemini-3.8-flash"]
+  # Modelo oficial estable de Google Flash
+  modelos_flash = ["gemini-1.5-flash"]
 
   ultimo_error = ""
   for api_key in MASTER_KEYS:
@@ -140,20 +141,13 @@ def consultar_gemini_con_pool(mensaje, modo):
           error_detalle = e.read().decode("utf-8")
         except Exception:
           error_detalle = str(e)
-        
         ultimo_error = f"HTTP {e.code} ({modelo}): {error_detalle}"
-        if e.code == 429:
-          continue
         continue
       except Exception as e:
         ultimo_error = str(e)
         continue
 
-  return (
-      f"⚠️ Límite de peticiones alcanzado (Error 429) o fallo de red. El pool"
-      f" rotó todas las claves sin éxito. Intenta de nuevo en unos"
-      f" segundos.\nDetalle: {ultimo_error}"
-  )
+  return f"🛑 DIAGNÓSTICO DE API: {ultimo_error}"
 
 
 # Inicializar Estado de Sesión
@@ -299,16 +293,58 @@ else:
 
   st.markdown("---")
 
-  # Selector de Nivel de Análisis
-  modo_busqueda = st.selectbox(
-      "⚡ Selecciona el Nivel de Análisis:",
-      [
-          "🚀 Búsqueda Rápida",
-          "⚖️ Equilibrado",
-          "🔍 Profundo",
-          "🔬 Muy Minucioso",
-      ],
-  )
+  # Selector de Nivel de Análisis y Panel de Voz Superior (Libre de Publicidad)
+  c_sel, c_voz = st.columns([2, 1])
+  with c_sel:
+    modo_busqueda = st.selectbox(
+        "⚡ Nivel de Análisis:",
+        [
+            "🚀 Búsqueda Rápida",
+            "⚖️ Equilibrado",
+            "🔍 Profundo",
+            "🔬 Muy Minucioso",
+        ],
+    )
+
+  with c_voz:
+    st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+    control_voz_html = """
+        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+            <button onclick="startDictation()" title="Hablar" style="background: #12edff; color: #030108; border: none; padding: 8px 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 12px; font-family: 'Rajdhani', sans-serif; box-shadow: 0 0 8px #12edff;">🎤 Hablar</button>
+            <button onclick="stopSpeaking()" title="Silenciar" style="background: #ff3366; color: #ffffff; border: none; padding: 8px 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 12px; font-family: 'Rajdhani', sans-serif;">⏹️ Silenciar</button>
+        </div>
+        <script>
+            function startDictation() {
+                if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                    alert("Tu navegador no soporta voz.");
+                    return;
+                }
+                const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+                recognition.lang = 'es-ES';
+                recognition.interimResults = false;
+                
+                recognition.onresult = function(event) {
+                    const text = event.results[0][0].transcript;
+                    const chatInput = document.querySelector('textarea[data-testid="stChatInputTextArea"]');
+                    if (chatInput) {
+                        chatInput.value = text;
+                        chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        setTimeout(() => {
+                            chatInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
+                        }, 400);
+                    }
+                };
+                recognition.start();
+            }
+
+            function stopSpeaking() {
+                if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                }
+            }
+        </script>
+        """
+    components.html(control_voz_html, height=45)
 
   if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -316,68 +352,6 @@ else:
   for message in st.session_state.messages:
     with st.chat_message(message["role"]):
       st.markdown(message["content"])
-
-  # --- BOTÓN FLOTANTE FIJO DE VOZ (ESQUINA INFERIOR DERECHA) ---
-  floating_voz_html = """
-    <div style="position: fixed; bottom: 25px; right: 20px; z-index: 999999; background: rgba(8, 14, 28, 0.9); backdrop-filter: blur(8px); border: 1.5px solid #12edff; border-radius: 30px; padding: 8px 14px; box-shadow: 0 0 15px rgba(0,240,255,0.4); display: flex; align-items: center; gap: 8px;">
-        <button onclick="startDictation()" title="Hablar con SAY" style="background: #12edff; color: #030108; border: none; width: 38px; height: 38px; border-radius: 50%; font-weight: bold; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px #12edff;">🎤</button>
-        <button onclick="stopSpeaking()" title="Silenciar Voz" style="background: #ff3366; color: #ffffff; border: none; width: 38px; height: 38px; border-radius: 50%; font-weight: bold; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center;">⏹️</button>
-    </div>
-    <script>
-        function startDictation() {
-            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-                alert("Tu navegador no soporta el reconocimiento de voz.");
-                return;
-            }
-            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-            recognition.lang = 'es-ES';
-            recognition.interimResults = false;
-            
-            recognition.onstart = function() {
-                console.log("SAY escuchando...");
-            };
-            
-            recognition.onresult = function(event) {
-                const text = event.results[0][0].transcript;
-                console.log("Texto reconocido: " + text);
-                
-                // Buscar el campo de entrada de chat de Streamlit y simular escritura + Enter
-                const chatInput = document.querySelector('textarea[data-testid="stChatInputTextArea"]');
-                if (chatInput) {
-                    chatInput.value = text;
-                    chatInput.dispatchEvent(new Event('input', { bubbles: true }));
-                    
-                    // Simular presión de tecla Enter para disparar la búsqueda de inmediato
-                    setTimeout(() => {
-                        const enterEvent = new KeyboardEvent('keydown', {
-                            key: 'Enter',
-                            code: 'Enter',
-                            keyCode: 13,
-                            which: 13,
-                            bubbles: true
-                        });
-                        chatInput.dispatchEvent(enterEvent);
-                    }, 400);
-                } else {
-                    alert("No se encontró el chat input en pantalla.");
-                }
-            };
-            
-            recognition.onerror = function(event) {
-                console.log("Error de voz: ", event.error);
-            };
-            
-            recognition.start();
-        }
-
-        function stopSpeaking() {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-            }
-        }
-    </script>
-    """
-  st.markdown(floating_voz_html, unsafe_allow_html=True)
 
   if prompt := st.chat_input(
       "Escribe tu consulta detallada en el motor de búsqueda..."
@@ -415,5 +389,5 @@ else:
 
     st.session_state.messages.append(
         {"role": "assistant", "content": respuesta}
-)
-        
+        )
+          
