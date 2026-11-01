@@ -107,8 +107,8 @@ def consultar_gemini_con_pool(mensaje, modo):
       + mensaje
   )
 
-  # Modelo oficial estable de Google Flash
-  modelos_flash = ["gemini-1.5-flash"]
+  # Modelos Flash solicitados: 3.5 y 3.8
+  modelos_flash = ["gemini-3.5-flash", "gemini-3.8-flash"]
 
   ultimo_error = ""
   for api_key in MASTER_KEYS:
@@ -142,6 +142,8 @@ def consultar_gemini_con_pool(mensaje, modo):
         except Exception:
           error_detalle = str(e)
         ultimo_error = f"HTTP {e.code} ({modelo}): {error_detalle}"
+        if e.code == 429:
+          continue
         continue
       except Exception as e:
         ultimo_error = str(e)
@@ -293,7 +295,7 @@ else:
 
   st.markdown("---")
 
-  # Selector de Nivel de Análisis y Panel de Voz Superior (Libre de Publicidad)
+  # Selector de Nivel de Análisis y Panel de Voz Superior (Libre de Publicidad inferior)
   c_sel, c_voz = st.columns([2, 1])
   with c_sel:
     modo_busqueda = st.selectbox(
@@ -389,5 +391,5 @@ else:
 
     st.session_state.messages.append(
         {"role": "assistant", "content": respuesta}
-        )
-          
+            )
+        
