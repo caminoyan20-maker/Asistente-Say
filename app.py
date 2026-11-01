@@ -10,7 +10,7 @@ DB_FILE = "usuarios.json"
 MASTER_KEYS = st.secrets.get("MASTER_KEYS", [])
 
 st.set_page_config(
-    page_title="SAY - Cyber Neural Core v3.7", page_icon="🤖", layout="centered"
+    page_title="SAY - Cyber Neural Core v3.8", page_icon="🤖", layout="centered"
 )
 
 # Estilos Cyber Neon avanzados
@@ -71,8 +71,11 @@ st.markdown(
 
 def cargar_usuarios():
   if os.path.exists(DB_FILE):
-    with open(DB_FILE, "r", encoding="utf-8") as f:
-      return json.load(f)
+    try:
+      with open(DB_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+    except:
+      return {}
   return {}
 
 
@@ -104,45 +107,50 @@ def consultar_gemini_con_pool(mensaje, modo):
       + mensaje
   )
 
+  # Lista de modelos prioritarios Flash solicitados
+  modelos_flash = ["gemini-3.5-flash", "gemini-3.8-flash"]
+
   ultimo_error = ""
   for api_key in MASTER_KEYS:
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key.strip()}"
-    payload = {
-        "contents": [{"role": "user", "parts": [{"text": prompt_amplio}]}],
-        "generationConfig": {
-            "temperature": cfg["temperature"],
-            "maxOutputTokens": cfg["maxOutputTokens"],
-        },
-    }
-    data_bytes = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(url, data=data_bytes, method="POST")
-    req.add_header("Content-Type", "application/json")
-    try:
-      with urllib.request.urlopen(req, timeout=30) as response:
-        res_body = response.read().decode("utf-8")
-        data = json.loads(res_body)
-        texto_respuesta = (
-            data.get("candidates", [{}])[0]
-            .get("content", {})
-            .get("parts", [{}])[0]
-            .get("text")
-        )
-        if texto_respuesta:
-          return texto_respuesta
-    except urllib.error.HTTPError as e:
+    for modelo in modelos_flash:
+      url = f"https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent?key={api_key.strip()}"
+      payload = {
+          "contents": [{"role": "user", "parts": [{"text": prompt_amplio}]}],
+          "generationConfig": {
+              "temperature": cfg["temperature"],
+              "maxOutputTokens": cfg["maxOutputTokens"],
+          },
+      }
+      data_bytes = json.dumps(payload).encode("utf-8")
+      req = urllib.request.Request(url, data=data_bytes, method="POST")
+      req.add_header("Content-Type", "application/json")
       try:
-        error_detalle = e.read().decode("utf-8")
-      except Exception:
-        error_detalle = str(e)
-      ultimo_error = f"HTTP {e.code}: {error_detalle}"
-      continue
-    except Exception as e:
-      ultimo_error = str(e)
-      continue
+        with urllib.request.urlopen(req, timeout=30) as response:
+          res_body = response.read().decode("utf-8")
+          data = json.loads(res_body)
+          texto_respuesta = (
+              data.get("candidates", [{}])[0]
+              .get("content", {})
+              .get("parts", [{}])[0]
+              .get("text")
+          )
+          if texto_respuesta:
+            return texto_respuesta
+      except urllib.error.HTTPError as e:
+        try:
+          error_detalle = e.read().decode("utf-8")
+        except Exception:
+          error_detalle = str(e)
+        ultimo_error = f"HTTP {e.code} ({modelo}): {error_detalle}"
+        continue
+      except Exception as e:
+        ultimo_error = str(e)
+        continue
 
   return f"🛑 DIAGNÓSTICO DE API: {ultimo_error}"
 
 
+# Inicializar Estado de Sesión para Memoria de Usuario
 if "usuario_actual" not in st.session_state:
   st.session_state.usuario_actual = None
 
@@ -151,12 +159,12 @@ usuarios = cargar_usuarios()
 # Encabezado Visual
 st.markdown('<h1 class="title-say">SAY</h1>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="cyber-subtitle">[ Interfaz Neural & Búsqueda Exhaustiva v3.7'
+    '<div class="cyber-subtitle">[ Interfaz Neural & Búsqueda Exhaustiva v3.8'
     " ]</div>",
     unsafe_allow_html=True,
 )
 
-# Control de Autenticación
+# Control de Autenticación con Memoria Activa
 if st.session_state.usuario_actual is None:
   st.markdown('<div class="hud-card">', unsafe_allow_html=True)
   tab1, tab2 = st.tabs(["🔑 Iniciar Sesión", "📝 Registrarse"])
@@ -167,30 +175,35 @@ if st.session_state.usuario_actual is None:
     if st.button("Entrar al Sistema", use_container_width=True):
       if u_in in usuarios and usuarios[u_in]["password"] == p_in:
         st.session_state.usuario_actual = u_in
+        st.success(f"¡Bienvenido de nuevo, {u_in}!")
         st.rerun()
       else:
-        st.error("Credenciales inválidas.")
+        st.error("Credenciales inválidas o usuario no registrado.")
 
   with tab2:
     r_u = st.text_input("Nuevo Usuario", key="r_u")
     r_p = st.text_input("Contraseña nueva", type="password", key="r_p")
     if st.button("Crear Cuenta", use_container_width=True):
-      if r_u and r_p and r_u not in usuarios:
-        usuarios[r_u] = {"password": r_p}
-        guardar_usuarios(usuarios)
-        st.success("¡Cuenta creada con éxito!")
+      if r_u and r_p:
+        if r_u not in usuarios:
+          usuarios[r_u] = {"password": r_p}
+          guardar_usuarios(usuarios)
+          st.success("¡Cuenta creada con éxito! Ya puedes iniciar sesión.")
+        else:
+          st.error("El usuario ya existe.")
       else:
-        st.error("Verifica los datos.")
+        st.error("Por favor completa todos los campos.")
   st.markdown("</div>", unsafe_allow_html=True)
 
 else:
   c_inf, c_btn = st.columns([3, 1])
   with c_inf:
     st.markdown(
-        f"👤 **{st.session_state.usuario_actual}** | Núcleo Exhaustivo Activo"
+        f"👤 Sesión Activa: **{st.session_state.usuario_actual}** | Núcleo"
+        " Exhaustivo Listo"
     )
   with c_btn:
-    if st.button("Salir"):
+    if st.button("Cerrar Sesión"):
       st.session_state.usuario_actual = None
       st.rerun()
 
@@ -314,4 +327,4 @@ else:
     st.session_state.messages.append(
         {"role": "assistant", "content": respuesta}
       )
-    
+      
