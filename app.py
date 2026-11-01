@@ -317,18 +317,16 @@ else:
     with st.chat_message(message["role"]):
       st.markdown(message["content"])
 
-  # --- BARRA DE VOZ FIJA ABAJO (JUNTO AL CHAT) ---
-  control_voz_html = """
-    <div style="background: rgba(8, 14, 28, 0.95); border: 1px solid rgba(0, 240, 255, 0.4); border-radius: 10px; padding: 8px; text-align: center; margin-bottom: 5px; display: flex; justify-content: center; align-items: center; gap: 10px;">
-        <button onclick="startDictation()" style="background: #12edff; color: #030108; border: none; padding: 6px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 12px; font-family: 'Rajdhani', sans-serif;">🎤 Hablar (Dictar)</button>
-        <button onclick="stopSpeaking()" style="background: #ff3366; color: #ffffff; border: none; padding: 6px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 12px; font-family: 'Rajdhani', sans-serif;">⏹️ Silenciar Voz</button>
-        <span id="vozStatus" style="color: #38bdf8; font-family: monospace; font-size: 11px;">Listo</span>
+  # --- BOTÓN FLOTANTE FIJO DE VOZ (ESQUINA INFERIOR DERECHA) ---
+  floating_voz_html = """
+    <div style="position: fixed; bottom: 25px; right: 20px; z-index: 999999; background: rgba(8, 14, 28, 0.9); backdrop-filter: blur(8px); border: 1.5px solid #12edff; border-radius: 30px; padding: 8px 14px; box-shadow: 0 0 15px rgba(0,240,255,0.4); display: flex; align-items: center; gap: 8px;">
+        <button onclick="startDictation()" title="Hablar con SAY" style="background: #12edff; color: #030108; border: none; width: 38px; height: 38px; border-radius: 50%; font-weight: bold; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px #12edff;">🎤</button>
+        <button onclick="stopSpeaking()" title="Silenciar Voz" style="background: #ff3366; color: #ffffff; border: none; width: 38px; height: 38px; border-radius: 50%; font-weight: bold; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center;">⏹️</button>
     </div>
     <script>
         function startDictation() {
-            const statusElem = document.getElementById('vozStatus');
             if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-                statusElem.innerText = "Tu navegador no soporta voz.";
+                alert("Tu navegador no soporta el reconocimiento de voz.");
                 return;
             }
             const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
@@ -336,21 +334,37 @@ else:
             recognition.interimResults = false;
             
             recognition.onstart = function() {
-                statusElem.innerText = "Escuchando...";
+                console.log("SAY escuchando...");
             };
             
             recognition.onresult = function(event) {
                 const text = event.results[0][0].transcript;
-                statusElem.innerText = "¡Capturado!";
+                console.log("Texto reconocido: " + text);
+                
+                // Buscar el campo de entrada de chat de Streamlit y simular escritura + Enter
                 const chatInput = document.querySelector('textarea[data-testid="stChatInputTextArea"]');
                 if (chatInput) {
                     chatInput.value = text;
                     chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    
+                    // Simular presión de tecla Enter para disparar la búsqueda de inmediato
+                    setTimeout(() => {
+                        const enterEvent = new KeyboardEvent('keydown', {
+                            key: 'Enter',
+                            code: 'Enter',
+                            keyCode: 13,
+                            which: 13,
+                            bubbles: true
+                        });
+                        chatInput.dispatchEvent(enterEvent);
+                    }, 400);
+                } else {
+                    alert("No se encontró el chat input en pantalla.");
                 }
             };
             
-            recognition.onerror = function() {
-                statusElem.innerText = "Error al escuchar (Verifica permisos de micrófono).";
+            recognition.onerror = function(event) {
+                console.log("Error de voz: ", event.error);
             };
             
             recognition.start();
@@ -363,7 +377,7 @@ else:
         }
     </script>
     """
-  components.html(control_voz_html, height=55)
+  st.markdown(floating_voz_html, unsafe_allow_html=True)
 
   if prompt := st.chat_input(
       "Escribe tu consulta detallada en el motor de búsqueda..."
@@ -379,7 +393,7 @@ else:
         respuesta = consultar_gemini_con_pool(prompt, modo_busqueda)
         st.markdown(respuesta)
 
-        # Reproducir voz automáticamente al terminar
+        # Reproducir la respuesta en voz alta automáticamente
         safe_text = (
             respuesta.replace('"', '\\"')
             .replace("\n", " ")
@@ -401,5 +415,5 @@ else:
 
     st.session_state.messages.append(
         {"role": "assistant", "content": respuesta}
-        )
-            
+)
+        
