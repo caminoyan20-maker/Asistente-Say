@@ -107,7 +107,7 @@ def consultar_gemini_con_pool(mensaje, modo):
       + mensaje
   )
 
-  # Modelos Flash solicitados: 3.5 y 3.8
+  # Núcleo de Modelos Flash solicitados: 3.5 y 3.8
   modelos_flash = ["gemini-3.5-flash", "gemini-3.8-flash"]
 
   ultimo_error = ""
@@ -211,7 +211,7 @@ else:
 
   st.markdown("---")
 
-  # Panel de Reproductor Multimedia
+  # Panel de Reproductor Multimedia opcional
   with st.expander("🎧 Reproductor Multimedia & Playlist Automática"):
     tab_web, tab_local = st.tabs(
         ["🌐 Buscador de Audio Web", "📱 Playlist Local Continua"]
@@ -295,58 +295,16 @@ else:
 
   st.markdown("---")
 
-  # Selector de Nivel de Análisis y Panel de Voz Superior (Libre de Publicidad inferior)
-  c_sel, c_voz = st.columns([2, 1])
-  with c_sel:
-    modo_busqueda = st.selectbox(
-        "⚡ Nivel de Análisis:",
-        [
-            "🚀 Búsqueda Rápida",
-            "⚖️ Equilibrado",
-            "🔍 Profundo",
-            "🔬 Muy Minucioso",
-        ],
-    )
-
-  with c_voz:
-    st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-    control_voz_html = """
-        <div style="display: flex; gap: 8px; justify-content: flex-end;">
-            <button onclick="startDictation()" title="Hablar" style="background: #12edff; color: #030108; border: none; padding: 8px 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 12px; font-family: 'Rajdhani', sans-serif; box-shadow: 0 0 8px #12edff;">🎤 Hablar</button>
-            <button onclick="stopSpeaking()" title="Silenciar" style="background: #ff3366; color: #ffffff; border: none; padding: 8px 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 12px; font-family: 'Rajdhani', sans-serif;">⏹️ Silenciar</button>
-        </div>
-        <script>
-            function startDictation() {
-                if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-                    alert("Tu navegador no soporta voz.");
-                    return;
-                }
-                const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-                recognition.lang = 'es-ES';
-                recognition.interimResults = false;
-                
-                recognition.onresult = function(event) {
-                    const text = event.results[0][0].transcript;
-                    const chatInput = document.querySelector('textarea[data-testid="stChatInputTextArea"]');
-                    if (chatInput) {
-                        chatInput.value = text;
-                        chatInput.dispatchEvent(new Event('input', { bubbles: true }));
-                        setTimeout(() => {
-                            chatInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
-                        }, 400);
-                    }
-                };
-                recognition.start();
-            }
-
-            function stopSpeaking() {
-                if ('speechSynthesis' in window) {
-                    window.speechSynthesis.cancel();
-                }
-            }
-        </script>
-        """
-    components.html(control_voz_html, height=45)
+  # Selector de Nivel de Análisis
+  modo_busqueda = st.selectbox(
+      "⚡ Selecciona el Nivel de Análisis:",
+      [
+          "🚀 Búsqueda Rápida",
+          "⚖️ Equilibrado",
+          "🔍 Profundo",
+          "🔬 Muy Minucioso",
+      ],
+  )
 
   if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -369,27 +327,7 @@ else:
         respuesta = consultar_gemini_con_pool(prompt, modo_busqueda)
         st.markdown(respuesta)
 
-        # Reproducir la respuesta en voz alta automáticamente
-        safe_text = (
-            respuesta.replace('"', '\\"')
-            .replace("\n", " ")
-            .replace("'", "\\'")
-        )
-        components.html(
-            f"""
-            <script>
-                if ('speechSynthesis' in window) {{
-                    window.speechSynthesis.cancel();
-                    const utterance = new SpeechSynthesisUtterance("{safe_text}");
-                    utterance.lang = 'es-ES';
-                    window.speechSynthesis.speak(utterance);
-                }}
-            </script>
-            """,
-            height=0,
-        )
-
     st.session_state.messages.append(
         {"role": "assistant", "content": respuesta}
-            )
-        
+        )
+      
