@@ -140,13 +140,20 @@ def consultar_gemini_con_pool(mensaje, modo):
           error_detalle = e.read().decode("utf-8")
         except Exception:
           error_detalle = str(e)
+        
         ultimo_error = f"HTTP {e.code} ({modelo}): {error_detalle}"
+        if e.code == 429:
+          continue
         continue
       except Exception as e:
         ultimo_error = str(e)
         continue
 
-  return f"🛑 DIAGNÓSTICO DE API: {ultimo_error}"
+  return (
+      f"⚠️ Límite de peticiones alcanzado (Error 429) o fallo de red. El pool"
+      f" rotó todas las claves sin éxito. Intenta de nuevo en unos"
+      f" segundos.\nDetalle: {ultimo_error}"
+  )
 
 
 # Inicializar Estado de Sesión
@@ -335,7 +342,6 @@ else:
             recognition.onresult = function(event) {
                 const text = event.results[0][0].transcript;
                 statusElem.innerText = "¡Capturado!";
-                // Busca el input de chat de streamlit y le inyecta el texto hablado
                 const chatInput = document.querySelector('textarea[data-testid="stChatInputTextArea"]');
                 if (chatInput) {
                     chatInput.value = text;
@@ -344,7 +350,7 @@ else:
             };
             
             recognition.onerror = function() {
-                statusElem.innerText = "Error al escuchar.";
+                statusElem.innerText = "Error al escuchar (Verifica permisos de micrófono).";
             };
             
             recognition.start();
@@ -373,7 +379,7 @@ else:
         respuesta = consultar_gemini_con_pool(prompt, modo_busqueda)
         st.markdown(respuesta)
 
-        # Reproducir voz automáticamente al terminar de buscar
+        # Reproducir voz automáticamente al terminar
         safe_text = (
             respuesta.replace('"', '\\"')
             .replace("\n", " ")
@@ -395,5 +401,5 @@ else:
 
     st.session_state.messages.append(
         {"role": "assistant", "content": respuesta}
-      )
-        
+        )
+            
