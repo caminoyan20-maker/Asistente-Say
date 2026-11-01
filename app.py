@@ -107,7 +107,7 @@ def consultar_gemini_con_pool(mensaje, modo):
       + mensaje
   )
 
-  # Lista de modelos prioritarios Flash solicitados
+  # Modelos Flash prioritarios solicitados
   modelos_flash = ["gemini-3.5-flash", "gemini-3.8-flash"]
 
   ultimo_error = ""
@@ -304,6 +304,22 @@ else:
       ],
   )
 
+  # --- MÓDULO DE VOZ INTEGRADO ---
+  voz_html = """
+    <div style="background: rgba(8, 14, 28, 0.95); border: 1px solid rgba(0, 240, 255, 0.4); border-radius: 10px; padding: 10px; text-align: center; margin-bottom: 10px;">
+        <span style="color: #00f0ff; font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: bold;">🎙️ Núcleo de Voz Activo: </span>
+        <button onclick="stopSpeaking()" style="background: #ff3366; color: #ffffff; border: none; padding: 4px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; margin-left: 10px;">⏹️ Silenciar Voz</button>
+    </div>
+    <script>
+        function stopSpeaking() {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+            }
+        }
+    </script>
+    """
+  components.html(voz_html, height=55)
+
   if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -324,7 +340,28 @@ else:
       ):
         respuesta = consultar_gemini_con_pool(prompt, modo_busqueda)
         st.markdown(respuesta)
+
+        # Reproducir la respuesta en voz alta automáticamente
+        safe_text = (
+            respuesta.replace('"', '\\"')
+            .replace("\n", " ")
+            .replace("'", "\\'")
+        )
+        components.html(
+            f"""
+            <script>
+                if ('speechSynthesis' in window) {{
+                    window.speechSynthesis.cancel();
+                    const utterance = new SpeechSynthesisUtterance("{safe_text}");
+                    utterance.lang = 'es-ES';
+                    window.speechSynthesis.speak(utterance);
+                }}
+            </script>
+            """,
+            height=0,
+        )
+
     st.session_state.messages.append(
         {"role": "assistant", "content": respuesta}
-      )
-      
+    )
+    
