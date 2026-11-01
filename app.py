@@ -107,7 +107,6 @@ def consultar_gemini_con_pool(mensaje, modo):
       + mensaje
   )
 
-  # Modelos Flash prioritarios solicitados
   modelos_flash = ["gemini-3.5-flash", "gemini-3.8-flash"]
 
   ultimo_error = ""
@@ -150,7 +149,7 @@ def consultar_gemini_con_pool(mensaje, modo):
   return f"🛑 DIAGNÓSTICO DE API: {ultimo_error}"
 
 
-# Inicializar Estado de Sesión para Memoria de Usuario
+# Inicializar Estado de Sesión
 if "usuario_actual" not in st.session_state:
   st.session_state.usuario_actual = None
 
@@ -164,7 +163,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Control de Autenticación con Memoria Activa
+# Control de Autenticación
 if st.session_state.usuario_actual is None:
   st.markdown('<div class="hud-card">', unsafe_allow_html=True)
   tab1, tab2 = st.tabs(["🔑 Iniciar Sesión", "📝 Registrarse"])
@@ -304,13 +303,53 @@ else:
       ],
   )
 
-  # --- MÓDULO DE VOZ INTEGRADO ---
-  voz_html = """
-    <div style="background: rgba(8, 14, 28, 0.95); border: 1px solid rgba(0, 240, 255, 0.4); border-radius: 10px; padding: 10px; text-align: center; margin-bottom: 10px;">
-        <span style="color: #00f0ff; font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: bold;">🎙️ Núcleo de Voz Activo: </span>
-        <button onclick="stopSpeaking()" style="background: #ff3366; color: #ffffff; border: none; padding: 4px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; margin-left: 10px;">⏹️ Silenciar Voz</button>
+  if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+  for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+      st.markdown(message["content"])
+
+  # --- BARRA DE VOZ FIJA ABAJO (JUNTO AL CHAT) ---
+  control_voz_html = """
+    <div style="background: rgba(8, 14, 28, 0.95); border: 1px solid rgba(0, 240, 255, 0.4); border-radius: 10px; padding: 8px; text-align: center; margin-bottom: 5px; display: flex; justify-content: center; align-items: center; gap: 10px;">
+        <button onclick="startDictation()" style="background: #12edff; color: #030108; border: none; padding: 6px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 12px; font-family: 'Rajdhani', sans-serif;">🎤 Hablar (Dictar)</button>
+        <button onclick="stopSpeaking()" style="background: #ff3366; color: #ffffff; border: none; padding: 6px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 12px; font-family: 'Rajdhani', sans-serif;">⏹️ Silenciar Voz</button>
+        <span id="vozStatus" style="color: #38bdf8; font-family: monospace; font-size: 11px;">Listo</span>
     </div>
     <script>
+        function startDictation() {
+            const statusElem = document.getElementById('vozStatus');
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                statusElem.innerText = "Tu navegador no soporta voz.";
+                return;
+            }
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = 'es-ES';
+            recognition.interimResults = false;
+            
+            recognition.onstart = function() {
+                statusElem.innerText = "Escuchando...";
+            };
+            
+            recognition.onresult = function(event) {
+                const text = event.results[0][0].transcript;
+                statusElem.innerText = "¡Capturado!";
+                // Busca el input de chat de streamlit y le inyecta el texto hablado
+                const chatInput = document.querySelector('textarea[data-testid="stChatInputTextArea"]');
+                if (chatInput) {
+                    chatInput.value = text;
+                    chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+            };
+            
+            recognition.onerror = function() {
+                statusElem.innerText = "Error al escuchar.";
+            };
+            
+            recognition.start();
+        }
+
         function stopSpeaking() {
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
@@ -318,14 +357,7 @@ else:
         }
     </script>
     """
-  components.html(voz_html, height=55)
-
-  if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-  for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-      st.markdown(message["content"])
+  components.html(control_voz_html, height=55)
 
   if prompt := st.chat_input(
       "Escribe tu consulta detallada en el motor de búsqueda..."
@@ -341,7 +373,7 @@ else:
         respuesta = consultar_gemini_con_pool(prompt, modo_busqueda)
         st.markdown(respuesta)
 
-        # Reproducir la respuesta en voz alta automáticamente
+        # Reproducir voz automáticamente al terminar de buscar
         safe_text = (
             respuesta.replace('"', '\\"')
             .replace("\n", " ")
@@ -363,5 +395,5 @@ else:
 
     st.session_state.messages.append(
         {"role": "assistant", "content": respuesta}
-    )
-    
+      )
+        
